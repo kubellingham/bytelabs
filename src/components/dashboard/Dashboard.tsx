@@ -63,15 +63,16 @@ export function Dashboard() {
 
   // "Continue" is the furthest lesson touched, not the first unfinished one —
   // people come back to where they were, not to where they slipped.
-  const lastLesson = TRACKS.flatMap(lessonsInTrack).findLast(
-    ({ lesson }) => progress.lessons[lesson.id] !== undefined,
+  const ordered = TRACKS.flatMap(lessonsInTrack);
+  const lastLesson = ordered.findLast(({ lesson }) => progress.lessons[lesson.id] !== undefined);
+  const firstLesson = ordered.find(
+    ({ lesson }) => progress.lessons[lesson.id]?.completedAt == null,
   );
-  const nextLesson =
-    TRACKS.flatMap(lessonsInTrack).find(
-      ({ lesson }) => progress.lessons[lesson.id]?.completedAt == null,
-    ) ?? null;
 
-  const resume = lastLesson ?? nextLesson;
+  // Somebody who has never opened a lesson is not "picking up where they left
+  // off", and telling them they are is a small lie the whole dashboard rests on.
+  const returning = lastLesson !== undefined;
+  const resume = lastLesson ?? firstLesson ?? null;
   const totalXp = Object.entries(progress.xp)
     .filter(([key]) => !key.startsWith('skill:'))
     .reduce((sum, [, value]) => sum + value, 0);
@@ -82,10 +83,10 @@ export function Dashboard() {
         <div>
           <p className="font-mono text-[11px] tracking-[0.2em] text-accent uppercase">ByteLabs</p>
           <h1 className="mt-2 text-[length:var(--bl-step-4)] font-semibold text-ink">
-            {resume ? 'Pick up where you left off.' : 'You learn to code by coding.'}
+            {returning ? 'Pick up where you left off.' : 'You learn to code by coding.'}
           </h1>
           <p className="measure mt-3 text-[length:var(--bl-step-1)] text-muted">
-            {resume
+            {returning
               ? 'Or do something else entirely — nothing here is keeping score against you.'
               : 'Not by reading about it, not by watching lectures. Start with the first track and write something.'}
           </p>
@@ -109,7 +110,11 @@ export function Dashboard() {
           <Card
             accent
             href={`/learn/${resume.track.slug}/${resume.unit.slug}/${resume.chapter.slug}/${resume.lesson.slug}`}
-            eyebrow={`${resume.track.title} · ${resume.chapter.title}`}
+            eyebrow={
+              returning
+                ? `${resume.track.title} · ${resume.chapter.title}`
+                : `Start here · ${resume.track.title}`
+            }
             title={resume.lesson.title}
             body={resume.lesson.summary}
           />

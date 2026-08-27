@@ -18,15 +18,19 @@ function run(doc: Document, checks: Record<string, unknown>[]) {
 }
 
 describe('bundleWorkspace', () => {
-  it('inlines a linked stylesheet from the workspace', () => {
+  it('keeps a workspace stylesheet as a real link element', () => {
     const out = bundleWorkspace({
       'index.html':
         '<!doctype html><html><head><link rel="stylesheet" href="styles.css"></head><body></body></html>',
       'styles.css': 'body { color: red; }',
     });
-    expect(out).toContain('<style data-from="styles.css">');
-    expect(out).toContain('body { color: red; }');
-    expect(out).not.toContain('<link');
+
+    // The element has to survive: Unit 1 checks that a stylesheet is *linked*,
+    // and replacing the link with a <style> block made that unsatisfiable.
+    expect(out).toContain('<link rel="stylesheet"');
+    expect(out).toContain('data-from="styles.css"');
+    expect(out).toContain('data:text/css');
+    expect(out).toContain(encodeURIComponent('body { color: red; }'));
   });
 
   it('normalises ./ and / prefixes to workspace keys', () => {
@@ -34,7 +38,7 @@ describe('bundleWorkspace', () => {
       'index.html': '<link rel="stylesheet" href="./styles.css">',
       'styles.css': '.a{}',
     });
-    expect(out).toContain('<style data-from="styles.css">');
+    expect(out).toContain('data-from="styles.css"');
   });
 
   it('leaves external stylesheets alone', () => {

@@ -20,7 +20,15 @@ import { byteLabsEditorTheme, byteLabsHighlighting } from '@/lib/editor/theme';
 
 function languageFor(path: string): Extension {
   if (/\.css$/i.test(path)) return css();
-  return html();
+  /*
+   * Tag auto-closing is off deliberately.
+   *
+   * It is a fine convenience in a normal IDE, but here it takes away the reps that
+   * are the entire point — a learner who never types `</h1>` never learns to — and
+   * it actively fights the ghost mechanic: typing `<html lang="en">` becomes
+   * `<html lang="en"></html>`, which no longer matches the line being practised.
+   */
+  return html({ autoCloseTags: false });
 }
 
 export interface CodeEditorProps {

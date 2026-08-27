@@ -16,7 +16,19 @@ export default defineConfig({
     // ByteLabs is a wide-screen product; below 1024px it deliberately declines to render.
     viewport: { width: 1440, height: 900 },
   },
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: {
+        ...devices['Desktop Chrome'],
+        // This environment ships a Chromium build that predates the pinned
+        // Playwright version, so point at it rather than downloading another.
+        launchOptions: process.env.PLAYWRIGHT_CHROMIUM_PATH
+          ? { executablePath: process.env.PLAYWRIGHT_CHROMIUM_PATH }
+          : {},
+      },
+    },
+  ],
   webServer: {
     command: `npx next build && npx next start --port ${PORT}`,
     url: baseURL,

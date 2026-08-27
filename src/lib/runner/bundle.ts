@@ -3,9 +3,16 @@ import type { WorkspaceFiles } from '@/lib/content/schema';
 /**
  * Resolves a multi-file workspace into a single document for a sandboxed iframe.
  *
- * `<link rel="stylesheet">` and `<script src>` pointing at files in the workspace
- * are inlined; anything pointing elsewhere is left alone so a learner can still
- * reference a real image URL.
+ * A workspace stylesheet stays a real `<link rel="stylesheet">` with its href
+ * rewritten to a `data:` URL, rather than being replaced by a `<style>` block.
+ * That matters: Unit 1's fifth chapter is "Connecting CSS", and its requirement is
+ * literally "a stylesheet is linked". Swapping the element out made that
+ * requirement impossible to satisfy — a learner could do everything right and the
+ * gate would never open. Keeping the element means the check tests the thing it
+ * claims to, and the preview behaves like a browser actually would.
+ *
+ * Scripts are inlined, since nothing checks for a script element and a data: URL
+ * script is blocked by the sandbox anyway.
  *
  * This is deliberately a small, targeted rewrite rather than a real bundler. The
  * input is one learner's own hand-written HTML, not arbitrary documents, and the
@@ -58,9 +65,15 @@ export function bundleWorkspace(files: WorkspaceFiles, options: BundleOptions = 
     const href = attr(tag, 'href');
     if (!rel || rel.toLowerCase() !== 'stylesheet' || !href) return tag;
 
-    const contents = files[normalisePath(href)];
+    const path = normalisePath(href);
+    const contents = files[path];
     if (contents === undefined) return tag; // External or missing — leave it be.
-    return `<style data-from="${normalisePath(href)}">\n${escapeClosingTag(contents, 'style')}\n</style>`;
+
+    // Same element, same rel, real stylesheet — only the href is swapped for the
+    // file's contents. The original path is kept so it is legible when inspected.
+    const dataUrl = `data:text/css;charset=utf-8,${encodeURIComponent(contents)}`;
+    return tag
+      .replace(ATTR('href'), `href="${dataUrl}" data-from="${path}"`);
   });
 
   html = html.replace(SCRIPT_TAG, (tag, attrs: string) => {
