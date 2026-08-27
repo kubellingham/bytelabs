@@ -41,7 +41,8 @@ test.describe('the six acts', () => {
     await page.goto(LESSON);
     await page.getByRole('button', { name: 'Show me' }).click();
     await page.getByRole('button', { name: 'Skip the typing' }).click();
-    await page.getByRole('button', { name: 'My turn' }).click();
+    await page.getByRole('button', { name: 'Break it down' }).click();
+    await page.getByRole('button', { name: 'Skip the breakdown' }).click();
 
     const ghostLines = page.locator('.cm-ghost-pending');
     expect(await ghostLines.count()).toBeGreaterThan(0);
@@ -67,7 +68,8 @@ test.describe('the six acts', () => {
     await page.goto(LESSON);
     await page.getByRole('button', { name: 'Show me' }).click();
     await page.getByRole('button', { name: 'Skip the typing' }).click();
-    await page.getByRole('button', { name: 'My turn' }).click();
+    await page.getByRole('button', { name: 'Break it down' }).click();
+    await page.getByRole('button', { name: 'Skip the breakdown' }).click();
 
     await page.locator('.cm-content').first().click();
     await page.keyboard.type('<p>something else entirely</p>');
@@ -197,5 +199,91 @@ test.describe('graduation', () => {
 
     await expect(page.getByText('That is the unit.')).toBeVisible();
     await expect(page.getByText(/The next unit is open/)).toBeVisible();
+  });
+});
+
+test.describe('the breakdown', () => {
+  test('lights one fragment at a time and dims the rest', async ({ page }) => {
+    await page.goto('/learn/html-css/the-document/connecting-css/linking-a-stylesheet');
+    await page.getByRole('button', { name: 'Show me' }).click();
+    await page.getByRole('button', { name: 'Skip the typing' }).click();
+    await page.getByRole('button', { name: 'Break it down' }).click();
+
+    await expect(page.getByRole('heading', { name: 'What each part does' })).toBeVisible();
+    await expect(page.locator('.cm-anno-active')).toHaveCount(1);
+    await expect(page.locator('.cm-anno-active')).toHaveText('<link');
+    // The complement is drawn as two marks either side of the active fragment.
+    await expect(page.locator('.cm-anno-dim').first()).toBeVisible();
+
+    await page.getByRole('button', { name: 'Next' }).click();
+    await expect(page.locator('.cm-anno-active')).toHaveText('rel="stylesheet"');
+
+    await page.getByRole('button', { name: 'Back' }).click();
+    await expect(page.locator('.cm-anno-active')).toHaveText('<link');
+  });
+
+  test('opens the right file when a fragment lives in another one', async ({ page }) => {
+    await page.goto('/learn/html-css/the-document/connecting-css/linking-a-stylesheet');
+    await page.getByRole('button', { name: 'Show me' }).click();
+    await page.getByRole('button', { name: 'Skip the typing' }).click();
+    await page.getByRole('button', { name: 'Break it down' }).click();
+
+    await expect(page.locator('[role="tab"][aria-selected="true"]')).toContainText('index.html');
+
+    // The fourth fragment is a CSS selector, so the workspace should follow it.
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+    await page.getByRole('button', { name: 'Next' }).click();
+
+    await expect(page.locator('[role="tab"][aria-selected="true"]')).toContainText('styles.css');
+  });
+
+  test('is offered, never forced', async ({ page }) => {
+    await page.goto('/learn/html-css/the-document/connecting-css/linking-a-stylesheet');
+    await page.getByRole('button', { name: 'Show me' }).click();
+    await page.getByRole('button', { name: 'Skip the typing' }).click();
+    await page.getByRole('button', { name: 'Break it down' }).click();
+    await page.getByRole('button', { name: 'Skip the breakdown' }).click();
+
+    // Straight through to typing it yourself.
+    await expect(page.locator('.cm-ghost-pending').first()).toBeVisible();
+  });
+});
+
+test.describe('continuity', () => {
+  test('offers the next lesson instead of a dead end', async ({ page }) => {
+    await page.goto('/learn/html-css/the-document/how-browsers-build-a-page/from-text-to-pixels');
+
+    for (;;) {
+      const skipTyping = page.getByRole('button', { name: 'Skip the typing' });
+      const breakdown = page.getByRole('button', { name: 'Break it down' });
+      const finish = page.getByRole('button', { name: 'Finish lesson' });
+
+      if (await finish.isVisible().catch(() => false)) {
+        await finish.click();
+        break;
+      }
+      if (await skipTyping.isVisible().catch(() => false)) {
+        await skipTyping.click();
+        continue;
+      }
+      if (await breakdown.isVisible().catch(() => false)) {
+        await breakdown.click();
+        await page.getByRole('button', { name: 'Skip the breakdown' }).click();
+        continue;
+      }
+      await page.getByRole('button', { name: /Show me|Continue/ }).first().click();
+    }
+
+    // Act 6: the next chapter just starts. No trip back to a menu to hunt for it.
+    await expect(page.getByRole('link', { name: /^Next: / })).toBeVisible();
+  });
+
+  test('shows where you are in the chapter', async ({ page }) => {
+    await page.goto('/learn/html-css/the-document/your-first-document/the-document-skeleton');
+    const rail = page.getByRole('list', { name: 'Lessons in this chapter' });
+    await expect(rail).toBeVisible();
+    await expect(rail.getByRole('link')).toHaveCount(2);
+    await expect(page.getByText('lesson 1 of 2')).toBeVisible();
   });
 });

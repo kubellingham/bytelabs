@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 
 import type { WorkspaceFiles } from '@/lib/content/schema';
+import type { AnatomyState } from '@/lib/editor/anatomy';
 import type { GhostState } from '@/lib/editor/ghost';
 
 import { CodeEditor } from './CodeEditor';
@@ -14,6 +15,9 @@ export interface WorkspaceProps {
   onChange: (path: string, value: string) => void;
   /** Ghost state per file path. Absent means no scaffolding for that file. */
   ghosts?: Record<string, GhostState>;
+  /** Annotation ranges per file path, for the breakdown. */
+  anatomies?: Record<string, AnatomyState>;
+  onPickAnnotation?: (id: string) => void;
   readOnly?: boolean;
 }
 
@@ -37,6 +41,8 @@ export function Workspace({
   onSelect,
   onChange,
   ghosts,
+  anatomies,
+  onPickAnnotation,
   readOnly = false,
 }: WorkspaceProps) {
   const paths = useMemo(
@@ -87,6 +93,8 @@ export function Workspace({
             value={files[active] ?? ''}
             onChange={(value) => onChange(active, value)}
             {...(ghosts?.[active] ? { ghost: ghosts[active] } : {})}
+            {...(anatomies?.[active] ? { anatomy: anatomies[active] } : {})}
+            {...(onPickAnnotation ? { onPickAnnotation } : {})}
             readOnly={readOnly}
           />
         ) : null}

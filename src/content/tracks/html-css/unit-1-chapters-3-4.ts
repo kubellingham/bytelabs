@@ -64,6 +64,14 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b1',
               note: 'The header comes first — who this is, at the top of the page.',
               concepts: ['semantic-header'],
+              annotations: [
+                {
+                  id: "d-header",
+                  find: "<header>",
+                  label: "Introductory content for the page. A screen reader user can jump straight to it as a landmark.",
+                  concepts: ["semantic-header"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -77,6 +85,26 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b2',
               note: 'Navigation goes inside the header here, because it belongs to the page as a whole.',
               concepts: ['semantic-nav', 'nav-is-a-list'],
+              annotations: [
+                {
+                  id: "d-nav",
+                  find: "<nav>",
+                  label: "A block of navigation links \u2014 not every link on the page, just the ones that get you around.",
+                  concepts: ["semantic-nav"],
+                },
+                {
+                  id: "d-ul",
+                  find: "<ul>",
+                  label: "Navigation is a list of destinations, so it is marked up as a list.",
+                  concepts: ["nav-is-a-list"],
+                },
+                {
+                  id: "d-anchor",
+                  find: "<a href=\"/\">Home</a>",
+                  label: "An anchor. href is where it goes; the text between the tags is what you click.",
+                  concepts: ["link-href"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -90,6 +118,14 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b3',
               note: 'Then main — the content unique to this page. Exactly one per page.',
               concepts: ['semantic-main'],
+              annotations: [
+                {
+                  id: "d-main",
+                  find: "<main>",
+                  label: "The content unique to this page. Exactly one per page, and never inside a header or footer.",
+                  concepts: ["semantic-main"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -102,6 +138,14 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b4',
               note: 'And the footer closes it out.',
               concepts: ['semantic-footer'],
+              annotations: [
+                {
+                  id: "d-footer",
+                  find: "<footer>",
+                  label: "Closing content \u2014 address, hours, secondary links.",
+                  concepts: ["semantic-footer"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -207,6 +251,14 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b1',
               note: 'A thematic grouping with a heading. That is a section.',
               concepts: ['semantic-section'],
+              annotations: [
+                {
+                  id: "e-section",
+                  find: "<section>",
+                  label: "A thematic grouping that carries a heading. If you cannot think of a heading for it, it probably is not a section.",
+                  concepts: ["semantic-section"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -220,6 +272,20 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b2',
               note: 'Each of these would make sense on its own — lifted onto a menu, or into a search result. Articles.',
               concepts: ['semantic-article'],
+              annotations: [
+                {
+                  id: "e-article",
+                  find: "<article>",
+                  label: "Would still make sense lifted out of this page entirely. That is the whole test.",
+                  concepts: ["semantic-article"],
+                },
+                {
+                  id: "e-h3",
+                  find: "<h3>Sourdough</h3>",
+                  label: "An h3 because it sits inside a section headed by an h2 \u2014 one level down, never two.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -233,6 +299,14 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b3',
               note: 'Related, but not part of the main content. An aside.',
               concepts: ['semantic-aside'],
+              annotations: [
+                {
+                  id: "e-aside",
+                  find: "<aside>",
+                  label: "Related to the main content but not part of it \u2014 a sidebar, a pull quote, a related note.",
+                  concepts: ["semantic-aside"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -245,6 +319,20 @@ export const CHAPTER_3: ChapterInput = {
               id: 'b4',
               note: 'And here is a div, used honestly — a wrapper that exists only so the two articles can be laid out side by side later. Nothing about it is meaningful.',
               concepts: ['div-honestly'],
+              annotations: [
+                {
+                  id: "e-div",
+                  find: "<div class=\"bakes\">",
+                  label: "A div, used honestly: a box to hang layout on when no element describes what is inside it.",
+                  concepts: ["div-honestly"],
+                },
+                {
+                  id: "e-class",
+                  find: "class=\"bakes\"",
+                  label: "A name for styling. It carries no meaning to a browser, a search engine, or a screen reader.",
+                  concepts: ["div-honestly"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -340,6 +428,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b1',
               note: 'The h1 says what the whole page is. There is only ever one.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "f-h1",
+                  find: "<h1>Our bread</h1>",
+                  label: "What the whole page is about. There is only ever one.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -353,6 +449,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b2',
               note: 'A major division of the page is an h2 — one level down.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "f-h2",
+                  find: "<h2>Sourdough</h2>",
+                  label: "A major division of the page \u2014 one level down from the h1.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -365,6 +469,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b3',
               note: 'A subdivision of that section is an h3. Down one more level, never two.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "f-h3",
+                  find: "<h3>The starter</h3>",
+                  label: "A subdivision of that section. Down one more level, never two.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -377,6 +489,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b4',
               note: 'Back up to a sibling section — an h2 again, because it sits at the same depth as the first one.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "f-h2b",
+                  find: "<h2>Rye</h2>",
+                  label: "Back up to h2, because this section sits at the same depth as the first one.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -480,6 +600,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b2',
               note: 'Three days is the part that will cause a problem if missed. That is importance — strong.',
               concepts: ['emphasis-meaning'],
+              annotations: [
+                {
+                  id: "g-strong",
+                  find: "<strong>three days\u2019 notice</strong>",
+                  label: "strong marks importance \u2014 the part that causes a problem if it is missed. A screen reader may change its tone for it.",
+                  concepts: ["emphasis-meaning"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -492,6 +620,14 @@ export const CHAPTER_4: ChapterInput = {
               id: 'b3',
               note: 'And here the stress changes the meaning of the sentence — em, not italics for decoration.',
               concepts: ['emphasis-meaning'],
+              annotations: [
+                {
+                  id: "g-em",
+                  find: "<em>promise</em>",
+                  label: "em marks stress. Move it to a different word and the sentence means something else.",
+                  concepts: ["emphasis-meaning"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',

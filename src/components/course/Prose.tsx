@@ -1,3 +1,4 @@
+import { parseInline } from '@/lib/content/inline';
 import type { Prose as ProseBlock } from '@/lib/content/schema';
 
 /**
@@ -9,32 +10,35 @@ import type { Prose as ProseBlock } from '@/lib/content/schema';
  * looser parser.
  */
 
-const INLINE = /(`[^`]+`|\*\*[^*]+\*\*)/g;
-
 function Inline({ text }: { text: string }) {
-  const parts = text.split(INLINE).filter((part) => part.length > 0);
-
   return (
     <>
-      {parts.map((part, index) => {
-        if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-          return (
-            <code
-              key={index}
-              className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[0.86em] text-accent"
-            >
-              {part.slice(1, -1)}
-            </code>
-          );
+      {parseInline(text).map((token, index) => {
+        switch (token.kind) {
+          case 'code':
+            return (
+              <code
+                key={index}
+                className="rounded bg-sunken px-1.5 py-0.5 font-mono text-[0.86em] text-accent"
+              >
+                {token.text}
+              </code>
+            );
+          case 'strong':
+            return (
+              <strong key={index} className="font-semibold text-ink">
+                {token.text}
+              </strong>
+            );
+          case 'em':
+            return (
+              <em key={index} className="text-ink italic">
+                {token.text}
+              </em>
+            );
+          case 'text':
+            return <span key={index}>{token.text}</span>;
         }
-        if (part.startsWith('**') && part.endsWith('**') && part.length > 4) {
-          return (
-            <strong key={index} className="font-semibold text-ink">
-              {part.slice(2, -2)}
-            </strong>
-          );
-        }
-        return <span key={index}>{part}</span>;
       })}
     </>
   );

@@ -4,13 +4,16 @@ import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 
 import { AssistPanel } from '@/components/assist/AssistPanel';
+import { AnatomyPanel } from '@/components/course/AnatomyPanel';
 import { Prose } from '@/components/course/Prose';
 import { RequirementList } from '@/components/course/RequirementList';
 import { Workspace } from '@/components/editor/Workspace';
 import { Preview } from '@/components/runner/Preview';
 import { useRequirements } from '@/components/runner/useRequirements';
-import type { LessonLocation } from '@/content';
+import { nextLesson, type LessonLocation } from '@/content';
 import { getConcept } from '@/content/concepts';
+import { annotationsForBeats, resolveAnnotation, type ResolvedAnnotation } from '@/lib/content/annotations';
+import type { AnatomyRange, AnatomyState } from '@/lib/editor/anatomy';
 import { newlyMatchedConcepts, resolveLines, type Resolution } from '@/lib/editor/resolve';
 import type { GhostState } from '@/lib/editor/ghost';
 import { planLesson } from '@/lib/course/plan';
@@ -38,6 +41,11 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
 
   const [stepIndex, setStepIndex] = useState(0);
   const [activePath, setActivePath] = useState('index.html');
+  /** A demo runs in two phases: the code types itself, then it comes apart. */
+  const [demoPhase, setDemoPhase] = useState<'typing' | 'anatomy'>('typing');
+  const [annotationIndex, setAnnotationIndex] = useState(0);
+  /** A fragment the learner clicked to ask about again, outside the breakdown. */
+  const [recalledId, setRecalledId] = useState<string | null>(null);
   const [learnerFiles, setLearnerFiles] = useState<WorkspaceFiles | null>(null);
   const [resolutions, setResolutions] = useState<Record<string, Resolution>>({});
 
@@ -68,6 +76,69 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
     if (planned?.kind === 'explain' || planned?.kind === 'check') return planned.files;
     return lesson.startFiles;
   }, [planned, playback.files, learnerFiles, lesson.startFiles]);
+
+  /* ------------------------------------------------- The breakdown (Act 3b) */
+
+  /**
+   * Annotations resolve against the files currently on screen, so the same
+   * definitions light up the demo's code and, later, the learner's own copy of it.
+   */
+  const resolvedAnnotations: ResolvedAnnotation[] = useMemo(() => {
+    if (step?.kind !== 'demo') return [];
+    return annotationsForBeats(step.beats)
+      .map(({ annotation, defaultFile }) => resolveAnnotation(annotation, files, defaultFile))
+      .filter((entry): entry is ResolvedAnnotation => entry !== null);
+  }, [step, files]);
+
+  const inAnatomy = planned?.kind === 'demo' && demoPhase === 'anatomy';
+  const hasBreakdown = resolvedAnnotations.length > 0;
+
+  /** Underlines stay on after the breakdown, so any piece can be asked about again. */
+  const anatomies: Record<string, AnatomyState> | undefined = useMemo(() => {
+    if (planned?.kind !== 'demo' || !playback.done || !hasBreakdown) return undefined;
+
+    const activeId = inAnatomy
+      ? (resolvedAnnotations[annotationIndex]?.annotation.id ?? null)
+      : recalledId;
+
+    const byFile = new Map<string, AnatomyRange[]>();
+    for (const entry of resolvedAnnotations) {
+      const ranges = byFile.get(entry.file) ?? [];
+      ranges.push({ id: entry.annotation.id, from: entry.from, to: entry.to });
+      byFile.set(entry.file, ranges);
+    }
+
+    const out: Record<string, AnatomyState> = {};
+    for (const [file, ranges] of byFile) {
+      out[file] = { ranges, activeId, dim: inAnatomy, interactive: true };
+    }
+    return out;
+  }, [planned, playback.done, hasBreakdown, inAnatomy, resolvedAnnotations, annotationIndex, recalledId]);
+
+  /** Stepping to a fragment in another file opens that file. */
+  const selectAnnotation = useCallback(
+    (next: number) => {
+      const clamped = Math.max(0, Math.min(resolvedAnnotations.length - 1, next));
+      setAnnotationIndex(clamped);
+      const target = resolvedAnnotations[clamped];
+      if (target) setActivePath(target.file);
+    },
+    [resolvedAnnotations],
+  );
+
+  const pickAnnotation = useCallback(
+    (id: string) => {
+      const position = resolvedAnnotations.findIndex((entry) => entry.annotation.id === id);
+      if (position === -1) return;
+      if (inAnatomy) selectAnnotation(position);
+      else setRecalledId(id);
+    },
+    [resolvedAnnotations, inAnatomy, selectAnnotation],
+  );
+
+  const recalled = recalledId
+    ? (resolvedAnnotations.find((entry) => entry.annotation.id === recalledId) ?? null)
+    : null;
 
   /* ------------------------------------------------------------- Act 4 */
 
@@ -154,11 +225,21 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
           : files,
     );
     setResolutions({});
+    setDemoPhase('typing');
+    setAnnotationIndex(0);
+    setRecalledId(null);
     setStepIndex(nextIndex);
     update((state) => advanceLesson(state, lesson.id, nextIndex));
   }, [isLast, stepIndex, steps, files, lesson, track.id, update]);
 
   const lessonDone = progress.lessons[lesson.id]?.completedAt != null;
+
+  /**
+   * Act 6: "Move to the next chapter. Same environment, new concept. No lectures.
+   * Just reps." So finishing a lesson offers the next one directly rather than
+   * dropping the learner back on a list to find their own way.
+   */
+  const upNext = useMemo(() => nextLesson(location), [location]);
 
   if (!step || !planned) return null;
 
@@ -179,14 +260,23 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
   const continueLabel = (() => {
     if (isLast) return lessonDone ? 'Lesson complete' : 'Finish lesson';
     if (step.kind === 'explain') return 'Show me';
-    if (step.kind === 'demo') return playback.done ? 'My turn' : 'Skip the typing';
-    if (step.kind === 'practice') return 'Continue';
+    if (step.kind === 'demo') {
+      if (!playback.done) return 'Skip the typing';
+      // The breakdown is offered rather than forced; a learner who already reads
+      // HTML fluently should not have to click through eight labels.
+      return hasBreakdown ? 'Break it down' : 'My turn';
+    }
     return 'Continue';
   })();
 
   const onContinue = () => {
     if (step.kind === 'demo' && !playback.done) {
       playback.skip();
+      return;
+    }
+    if (step.kind === 'demo' && hasBreakdown && demoPhase === 'typing') {
+      setDemoPhase('anatomy');
+      selectAnnotation(0);
       return;
     }
     goNext();
@@ -202,7 +292,13 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
           <span aria-hidden="true" className="text-subtle">
             /
           </span>
-          <Link href={`/tracks/${track.slug}`} className="truncate text-muted hover:text-ink">
+          <Link href="/course" className="text-muted hover:text-ink">
+            The Course
+          </Link>
+          <span aria-hidden="true" className="text-subtle">
+            /
+          </span>
+          <Link href={`/course/${track.slug}`} className="truncate text-muted hover:text-ink">
             {track.title}
           </Link>
           <span aria-hidden="true" className="text-subtle">
@@ -242,6 +338,43 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
               {lesson.title}
             </h1>
 
+            {/*
+              Where you are in the chapter. Present so a lesson never feels like a
+              corridor with no doors — you can see what came before and what is
+              still to come, and go straight to either.
+            */}
+            {chapter.lessons.length > 1 ? (
+              <ol className="mt-3 flex flex-wrap items-center gap-1.5" aria-label="Lessons in this chapter">
+                {chapter.lessons.map((entry, position) => {
+                  const current = entry.id === lesson.id;
+                  const complete = progress.lessons[entry.id]?.completedAt != null;
+                  return (
+                    <li key={entry.id}>
+                      <Link
+                        href={`/learn/${track.slug}/${unit.slug}/${chapter.slug}/${entry.slug}`}
+                        aria-current={current ? 'page' : undefined}
+                        title={entry.title}
+                        className={`flex size-6 items-center justify-center rounded-md text-[11px] font-medium transition-colors ${
+                          current
+                            ? 'bg-accent text-on-accent'
+                            : complete
+                              ? 'bg-success-soft text-success hover:bg-success-soft/80'
+                              : 'border border-line text-subtle hover:text-ink'
+                        }`}
+                      >
+                        {position + 1}
+                        <span className="sr-only"> — {entry.title}</span>
+                      </Link>
+                    </li>
+                  );
+                })}
+                <li className="ms-1 text-xs text-subtle">
+                  lesson {chapter.lessons.findIndex((entry) => entry.id === lesson.id) + 1} of{' '}
+                  {chapter.lessons.length}
+                </li>
+              </ol>
+            ) : null}
+
             <div className="mt-8">
               {step.kind === 'explain' ? (
                 <>
@@ -252,7 +385,17 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
                 </>
               ) : null}
 
-              {step.kind === 'demo' ? (
+              {step.kind === 'demo' && inAnatomy ? (
+                <AnatomyPanel
+                  annotations={resolvedAnnotations}
+                  index={annotationIndex}
+                  onSelect={selectAnnotation}
+                  onFinish={goNext}
+                  onSkip={goNext}
+                />
+              ) : null}
+
+              {step.kind === 'demo' && !inAnatomy ? (
                 <div>
                   <h2 className="mb-5 text-[length:var(--bl-step-1)] font-semibold text-ink">
                     {step.title}
@@ -276,6 +419,24 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
                       );
                     })}
                   </ol>
+                </div>
+              ) : null}
+
+              {recalled && !inAnatomy ? (
+                <div className="bl-beat-note mt-6 rounded-xl border border-accent/40 bg-accent-soft/50 px-4 py-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <code className="font-mono text-sm text-accent">
+                      {recalled.annotation.find.trim()}
+                    </code>
+                    <button
+                      type="button"
+                      onClick={() => setRecalledId(null)}
+                      className="shrink-0 text-xs text-subtle transition-colors hover:text-ink"
+                    >
+                      Close
+                    </button>
+                  </div>
+                  <p className="mt-2 text-sm text-ink">{recalled.annotation.label}</p>
                 </div>
               ) : null}
 
@@ -319,7 +480,12 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
               ) : null}
             </div>
 
-            <div className="mt-10 flex items-center gap-3">
+            {/*
+              The breakdown carries its own Back/Next, so the step controls stand
+              down while it is running rather than offering a second, competing
+              way forward.
+            */}
+            <div className={`mt-10 flex items-center gap-3 ${inAnatomy ? 'hidden' : ''}`}>
               <button
                 type="button"
                 onClick={onContinue}
@@ -338,12 +504,21 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
                 </button>
               ) : null}
 
+              {isLast && lessonDone && upNext ? (
+                <Link
+                  href={`/learn/${upNext.track.slug}/${upNext.unit.slug}/${upNext.chapter.slug}/${upNext.lesson.slug}`}
+                  className="rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
+                >
+                  Next: {upNext.lesson.title}
+                </Link>
+              ) : null}
+
               {isLast && lessonDone ? (
                 <Link
-                  href={`/tracks/${track.slug}`}
+                  href={`/course/${track.slug}`}
                   className="rounded-lg border border-line px-4 py-2.5 text-sm text-muted transition-colors hover:text-ink"
                 >
-                  Back to the track
+                  {upNext ? 'See the track' : 'Back to the track'}
                 </Link>
               ) : null}
             </div>
@@ -358,6 +533,8 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
               onSelect={setActivePath}
               onChange={handleChange}
               {...(ghosts ? { ghosts } : {})}
+              {...(anatomies ? { anatomies } : {})}
+              {...(anatomies ? { onPickAnnotation: pickAnnotation } : {})}
               readOnly={step.kind === 'demo'}
             />
           </div>

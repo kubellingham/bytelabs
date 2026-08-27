@@ -1,5 +1,5 @@
-import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Page } from '@/components/shell/Page';
 
 import { UnitMap } from '@/components/course/UnitMap';
 import { getTrack, TRACKS } from '@/content';
@@ -20,14 +20,7 @@ export default async function TrackPage({ params }: { params: Promise<{ track: s
   const authored = track.units.filter((unit) => unit.status === 'available').length;
 
   return (
-    <main id="main" className="mx-auto max-w-4xl px-8 py-16">
-      <Link
-        href="/"
-        className="font-mono text-[11px] tracking-[0.18em] text-accent uppercase hover:underline"
-      >
-        ← ByteLabs
-      </Link>
-
+    <Page>
       <h1 className="mt-6 text-[length:var(--bl-step-4)] font-semibold text-ink">{track.title}</h1>
       <p className="measure mt-3 text-[length:var(--bl-step-1)] text-muted">{track.subtitle}</p>
 
@@ -48,6 +41,6 @@ export default async function TrackPage({ params }: { params: Promise<{ track: s
       <div className="mt-8">
         <UnitMap track={track} />
       </div>
-    </main>
+    </Page>
   );
 }

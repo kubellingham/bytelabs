@@ -64,8 +64,14 @@ export function GraduationRunner({ track, unit }: { track: Track; unit: Unit }) 
           <Link href="/" className="font-mono text-xs tracking-[0.18em] text-accent uppercase">
             ByteLabs
           </Link>
+          <span aria-hidden="true" className="text-subtle">
+            /
+          </span>
+          <Link href="/course" className="text-muted hover:text-ink">
+            The Course
+          </Link>
           <span aria-hidden="true" className="text-subtle">/</span>
-          <Link href={`/tracks/${track.slug}`} className="text-muted hover:text-ink">
+          <Link href={`/course/${track.slug}`} className="text-muted hover:text-ink">
             {track.title}
           </Link>
           <span aria-hidden="true" className="text-subtle">/</span>
@@ -110,7 +116,7 @@ export function GraduationRunner({ track, unit }: { track: Track; unit: Unit }) 
                     You built this from a brief with nothing to lean on. The next unit is open.
                   </p>
                   <Link
-                    href={`/tracks/${track.slug}`}
+                    href={`/course/${track.slug}`}
                     className="mt-4 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
                   >
                     Keep going

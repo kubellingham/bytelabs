@@ -65,6 +65,26 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b1',
               note: 'The link goes in the head, after the title. The browser fetches it while it is still parsing the page.',
               concepts: ['link-stylesheet'],
+              annotations: [
+                {
+                  id: "h-link",
+                  find: "<link",
+                  label: "The element that connects this page to another file.",
+                  concepts: ["link-stylesheet"],
+                },
+                {
+                  id: "h-rel",
+                  find: "rel=\"stylesheet\"",
+                  label: "What the relationship is: the file at the other end is styling for this page.",
+                  concepts: ["link-stylesheet"],
+                },
+                {
+                  id: "h-href",
+                  find: "href=\"styles.css\"",
+                  label: "Where to find it, relative to this HTML file. A typo here fails silently \u2014 the page just looks unstyled.",
+                  concepts: ["link-stylesheet"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -78,6 +98,14 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b2',
               note: 'Now over in styles.css. A selector picks what to style, and the braces hold what to do to it.',
               concepts: ['first-selectors'],
+              annotations: [
+                {
+                  id: "h-selector",
+                  find: "body",
+                  label: "The selector: which elements this rule applies to. Here, the body element.",
+                  concepts: ["first-selectors"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -90,6 +118,20 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b3',
               note: 'Inside, declarations — a property, a colon, a value, a semicolon. Watch the preview as this lands.',
               concepts: ['declarations'],
+              annotations: [
+                {
+                  id: "h-decl",
+                  find: "font-family: system-ui, sans-serif;",
+                  label: "A declaration: property, colon, value, semicolon. That shape is the whole of CSS.",
+                  concepts: ["declarations"],
+                },
+                {
+                  id: "h-lh",
+                  find: "line-height: 1.6;",
+                  label: "1.6 times the font size. A number with no unit scales with whatever size the text ends up.",
+                  concepts: ["declarations"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -102,6 +144,20 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b4',
               note: 'A second rule, targeting a different element. The whole of CSS is this shape repeated.',
               concepts: ['first-selectors', 'declarations'],
+              annotations: [
+                {
+                  id: "h-h1sel",
+                  find: "h1 {",
+                  label: "A second rule for a different element. CSS is this shape, repeated.",
+                  concepts: ["first-selectors"],
+                },
+                {
+                  id: "h-hex",
+                  find: "color: #7a3e1d;",
+                  label: "A hex colour \u2014 red, green and blue, two digits each.",
+                  concepts: ["declarations"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -203,6 +259,20 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b1',
               note: 'An element selector first — a baseline for every paragraph.',
               concepts: ['first-selectors'],
+              annotations: [
+                {
+                  id: "i-psel",
+                  find: "p {",
+                  label: "An element selector: every paragraph on the page, with no exceptions.",
+                  concepts: ["first-selectors"],
+                },
+                {
+                  id: "i-measure",
+                  find: "max-inline-size: 60ch;",
+                  label: "About 60 characters per line. Long lines are genuinely harder to read.",
+                  concepts: ["declarations"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -215,6 +285,14 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b2',
               note: 'Now mark up the paragraph we want to treat differently. A class is just an attribute.',
               concepts: ['class-selectors'],
+              annotations: [
+                {
+                  id: "i-class",
+                  find: "class=\"lead\"",
+                  label: "A class is just an attribute. Name it for what the content is, not for how it looks.",
+                  concepts: ["class-selectors"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -228,6 +306,14 @@ export const CHAPTER_5: ChapterInput = {
               id: 'b3',
               note: 'And select it with a dot. This rule applies to that paragraph only — and to any other element you give the same class.',
               concepts: ['class-selectors', 'declarations'],
+              annotations: [
+                {
+                  id: "i-dot",
+                  find: ".lead {",
+                  label: "The dot means class. This rule applies to anything carrying class=\"lead\", and nothing else.",
+                  concepts: ["class-selectors"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -337,6 +423,14 @@ export const CHAPTER_6: ChapterInput = {
               id: 'b1',
               note: 'Two rules that both target the same paragraph. One of them is going to win.',
               concepts: ['cascade-order'],
+              annotations: [
+                {
+                  id: "j-pcolour",
+                  find: "color: #444450;",
+                  label: "Sets the colour of every paragraph \u2014 including the lead one.",
+                  concepts: ["cascade-order"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -349,6 +443,14 @@ export const CHAPTER_6: ChapterInput = {
               id: 'b2',
               note: 'And a class rule setting the same property to something different. Inspect the paragraph after this lands — the Styles panel will show one of these struck through.',
               concepts: ['devtools-computed', 'specificity'],
+              annotations: [
+                {
+                  id: "j-leadcolour",
+                  find: "color: #7a3e1d;",
+                  label: "The same property, set again by a more specific selector. One of these wins \u2014 the Styles panel shows which, and strikes through the loser.",
+                  concepts: ["specificity"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',
@@ -362,6 +464,14 @@ export const CHAPTER_6: ChapterInput = {
               id: 'b3',
               note: 'Add some padding, then look at the box model diagram in the Computed panel. Content, padding, border, margin — with real numbers on your actual element.',
               concepts: ['devtools-computed', 'box-model'],
+              annotations: [
+                {
+                  id: "j-padding",
+                  find: "padding: 1rem 1.25rem;",
+                  label: "Space inside the box, between the border and the text. This is what the box model diagram is measuring.",
+                  concepts: ["box-model"],
+                },
+              ],
               edits: [
                 {
                   file: 'styles.css',

@@ -65,6 +65,29 @@ export const byteLabsEditorTheme = EditorView.theme({
     userSelect: 'none',
   },
   '.cm-line-matched': { backgroundColor: 'transparent' },
+
+  /*
+   * The breakdown. An annotated fragment is underlined so it reads as something
+   * you can ask about; the one being explained is lit, and the rest of the file
+   * recedes rather than disappearing — context you can still see past.
+   */
+  '.cm-anno': {
+    borderBottom: '1px dashed var(--bl-border-strong)',
+    cursor: 'help',
+  },
+  '.cm-anno:hover': {
+    backgroundColor: 'var(--bl-code-active-line)',
+  },
+  '.cm-anno-active': {
+    backgroundColor: 'var(--bl-accent-soft)',
+    borderRadius: '3px',
+    boxShadow: '0 0 0 2px var(--bl-accent-soft)',
+    borderBottom: '2px solid var(--bl-accent)',
+  },
+  '.cm-anno-dim': {
+    opacity: '0.3',
+    transition: 'opacity 220ms ease',
+  },
 });
 
 export const byteLabsHighlighting = syntaxHighlighting(

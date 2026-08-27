@@ -69,6 +69,14 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b1',
               note: 'Every page starts by telling the browser what kind of document this is. One line, no closing tag, always first.',
               concepts: ['doctype'],
+              annotations: [
+                {
+                  id: "a-doctype",
+                  find: "<!doctype html>",
+                  label: "Not a tag \u2014 an instruction. It puts the browser into standards mode rather than a 1990s compatibility mode.",
+                  concepts: ["doctype"],
+                },
+              ],
               edits: [{ file: 'index.html', text: '<!doctype html>\n' }],
               holdMs: 400,
             },
@@ -76,6 +84,26 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b2',
               note: 'Then the root element wraps everything. The lang attribute tells a screen reader which language to pronounce, so it is not optional.',
               concepts: ['html-lang'],
+              annotations: [
+                {
+                  id: "a-html-open",
+                  find: "<html lang=\"en\">",
+                  label: "The root element. Everything else on the page lives inside it.",
+                  concepts: ["html-lang"],
+                },
+                {
+                  id: "a-lang",
+                  find: "lang=\"en\"",
+                  label: "The language of the content. A screen reader uses it to decide how to pronounce the words.",
+                  concepts: ["html-lang"],
+                },
+                {
+                  id: "a-html-close",
+                  find: "</html>",
+                  label: "The closing tag. Everything you open has to be closed, and in the reverse order you opened it.",
+                  concepts: ["head-body"],
+                },
+              ],
               edits: [{ file: 'index.html', text: '<html lang="en">\n</html>\n' }],
               holdMs: 400,
             },
@@ -83,6 +111,20 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b3',
               note: 'The head holds information about the page. None of it is drawn on screen.',
               concepts: ['head-body'],
+              annotations: [
+                {
+                  id: "a-head",
+                  find: "<head>",
+                  label: "Information about the page. Nothing in here is ever drawn on screen.",
+                  concepts: ["head-body"],
+                },
+                {
+                  id: "a-title",
+                  find: "<title>My first page</title>",
+                  label: "The browser tab, the bookmark name, and the first line of a search result.",
+                  concepts: ["page-title"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -96,6 +138,20 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b4',
               note: 'And the body holds what a person actually sees. Two children, that is the whole shape of an HTML document.',
               concepts: ['head-body'],
+              annotations: [
+                {
+                  id: "a-body",
+                  find: "<body>",
+                  label: "Everything a person sees. The head describes the page; the body is the page.",
+                  concepts: ["head-body"],
+                },
+                {
+                  id: "a-h1",
+                  find: "<h1>Hello.</h1>",
+                  label: "An element in full: an opening tag, the content, a closing tag.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -108,6 +164,14 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b5',
               note: 'That is a complete, valid webpage. Look at the preview — the browser has parsed those characters into a tree and painted it.',
               concepts: ['render-pipeline'],
+              annotations: [
+                {
+                  id: "a-p",
+                  find: "<p>This started as text in a file.</p>",
+                  label: "A paragraph. The same shape again \u2014 open, content, close.",
+                  concepts: ["paragraphs"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -173,6 +237,14 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b1',
               note: 'Start with a container inside the body. Everything we add next will be a child of this.',
               concepts: ['div-honestly'],
+              annotations: [
+                {
+                  id: "a-article",
+                  find: "<article>",
+                  label: "A child of body, and about to become the parent of everything indented inside it.",
+                  concepts: ["semantic-article"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -186,6 +258,14 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b2',
               note: 'A heading goes inside it. Note the indentation — two more spaces, because it is one level deeper in the tree.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "a-nested-h1",
+                  find: "<h1>A short history of the tree</h1>",
+                  label: "Two levels deep: a child of article, a grandchild of body.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -198,6 +278,14 @@ export const CHAPTER_1: ChapterInput = {
               id: 'b3',
               note: 'Then two paragraphs, siblings of the heading. Same parent, same indentation.',
               concepts: ['paragraphs'],
+              annotations: [
+                {
+                  id: "a-sibling",
+                  find: "<p>Every element sits inside exactly one other element.</p>",
+                  label: "A sibling of the heading \u2014 same parent, same indentation.",
+                  concepts: ["paragraphs"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -295,6 +383,14 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b1',
               note: 'Doctype first. Always.',
               concepts: ['doctype'],
+              annotations: [
+                {
+                  id: "b-doctype",
+                  find: "<!doctype html>",
+                  label: "First line, every time. No closing tag, because it is an instruction rather than an element.",
+                  concepts: ["doctype"],
+                },
+              ],
               edits: [{ file: 'index.html', text: '<!doctype html>\n' }],
               holdMs: 300,
             },
@@ -302,6 +398,14 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b2',
               note: 'The root element, with its language declared.',
               concepts: ['html-lang'],
+              annotations: [
+                {
+                  id: "b-lang",
+                  find: "lang=\"en\"",
+                  label: "Not optional. Without it, assistive technology has to guess which language to read.",
+                  concepts: ["html-lang"],
+                },
+              ],
               edits: [{ file: 'index.html', text: '<html lang="en">\n</html>\n' }],
               holdMs: 300,
             },
@@ -309,6 +413,20 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b3',
               note: 'Head, then body. Two children of the root, in that order.',
               concepts: ['head-body'],
+              annotations: [
+                {
+                  id: "b-head",
+                  find: "<head>",
+                  label: "Head first, then body. Always in that order.",
+                  concepts: ["head-body"],
+                },
+                {
+                  id: "b-body",
+                  find: "<body>",
+                  label: "The visible half of the document.",
+                  concepts: ["head-body"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -321,6 +439,14 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b4',
               note: 'The title is the one thing the head needs before anything else. It is the browser tab, the bookmark, and the first line of a search result.',
               concepts: ['page-title'],
+              annotations: [
+                {
+                  id: "b-title",
+                  find: "<title>Ridgeway Bakery</title>",
+                  label: "Shown in the tab, saved as the bookmark name, and read out first by a screen reader.",
+                  concepts: ["page-title"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -333,6 +459,14 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b5',
               note: 'And something in the body, so there is proof it works.',
               concepts: ['heading-outline'],
+              annotations: [
+                {
+                  id: "b-h1",
+                  find: "<h1>Ridgeway Bakery</h1>",
+                  label: "The first thing in the body, so there is something to see.",
+                  concepts: ["heading-outline"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -404,6 +538,20 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b1',
               note: 'Encoding first, before any content the browser might have to decode.',
               concepts: ['charset'],
+              annotations: [
+                {
+                  id: "c-charset-tag",
+                  find: "<meta charset=\"utf-8\">",
+                  label: "How to turn the bytes in your file back into characters. It goes first, before anything with text in it.",
+                  concepts: ["charset"],
+                },
+                {
+                  id: "c-charset-val",
+                  find: "charset=\"utf-8\"",
+                  label: "utf-8 covers every character you are realistically going to write \u2014 accents, dashes, emoji.",
+                  concepts: ["charset"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -417,6 +565,26 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b2',
               note: 'Then the viewport, so narrow screens are treated as narrow screens.',
               concepts: ['viewport-meta'],
+              annotations: [
+                {
+                  id: "c-vp-name",
+                  find: "name=\"viewport\"",
+                  label: "Names which browser behaviour this meta tag is about.",
+                  concepts: ["viewport-meta"],
+                },
+                {
+                  id: "c-vp-width",
+                  find: "width=device-width",
+                  label: "Use the real width of the screen, instead of pretending to be a 980px desktop.",
+                  concepts: ["viewport-meta"],
+                },
+                {
+                  id: "c-vp-scale",
+                  find: "initial-scale=1",
+                  label: "Start at actual size rather than zoomed out to fit.",
+                  concepts: ["viewport-meta"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',
@@ -429,6 +597,14 @@ export const CHAPTER_2: ChapterInput = {
               id: 'b3',
               note: 'And a description. It is not rendered on the page, but it is often the sentence under your link in a search result.',
               concepts: ['meta-description'],
+              annotations: [
+                {
+                  id: "c-desc",
+                  find: "name=\"description\"",
+                  label: "Never drawn on the page, but often the sentence shown under your link in search results.",
+                  concepts: ["meta-description"],
+                },
+              ],
               edits: [
                 {
                   file: 'index.html',

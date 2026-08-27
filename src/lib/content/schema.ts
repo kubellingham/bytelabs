@@ -49,12 +49,44 @@ export type Edit = z.infer<typeof editSchema>;
  * it is talking about typing themselves on the right. Not the whole file at once —
  * the code responds to the words.
  */
+/**
+ * One piece of code and what it means.
+ *
+ * A note explains *why* a beat is being written; an annotation explains *what a
+ * specific fragment of it is*. That split is the point: the learner watches the
+ * code appear, then goes back over it part by part — `link` is the element, `rel`
+ * is the relationship, `href` is where to find it — with each fragment lit up in
+ * place while the rest of the file dims.
+ *
+ * Fragments are located by searching the document that is currently on screen
+ * rather than by stored offsets. That is what lets the same annotation work while
+ * the demo is showing *and* later, when the learner has typed the line themselves.
+ */
+export const annotationSchema = z.object({
+  id: z.string().min(1),
+  /** The exact text to light up. Must appear in the file verbatim. */
+  find: z.string().min(1),
+  /** Which occurrence to use when the fragment appears more than once. 1-based. */
+  occurrence: z.number().int().positive().default(1),
+  /** Defaults to the file the beat's first edit targets. */
+  file: z.string().min(1).optional(),
+  /** What this fragment is, in a sentence. Not a lecture — a label. */
+  label: z.string().min(1),
+  concepts: z.array(z.string()).default([]),
+});
+export type Annotation = z.infer<typeof annotationSchema>;
+
 export const beatSchema = z.object({
   id: z.string().min(1),
   note: z.string().min(1),
   /** Tagged per beat, not per lesson, because that is the granularity ghost fade needs. */
   concepts: z.array(z.string()).default([]),
   edits: z.array(editSchema).min(1),
+  /**
+   * The part-by-part breakdown, stepped through after this beat's code has typed.
+   * Optional: a beat that only adds a blank line has nothing to dissect.
+   */
+  annotations: z.array(annotationSchema).default([]),
   /** Beat-specific pacing override, in ms per character. */
   charMs: z.number().positive().optional(),
   /** A deliberate pause after this beat lands, in ms. */
@@ -250,6 +282,7 @@ export type Catalog = z.infer<typeof catalogSchema>;
  */
 export type ProseInput = z.input<typeof proseSchema>;
 export type BeatInput = z.input<typeof beatSchema>;
+export type AnnotationInput = z.input<typeof annotationSchema>;
 export type StepInput = z.input<typeof stepSchema>;
 export type LessonInput = z.input<typeof lessonSchema>;
 export type ChapterInput = z.input<typeof chapterSchema>;

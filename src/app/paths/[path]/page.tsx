@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { Page } from '@/components/shell/Page';
 
 import { LEARNING_PATHS, getTrackById } from '@/content';
 
@@ -19,14 +20,7 @@ export default async function PathPage({ params }: { params: Promise<{ path: str
   if (!path) notFound();
 
   return (
-    <main id="main" className="mx-auto max-w-3xl px-8 py-16">
-      <Link
-        href="/"
-        className="font-mono text-[11px] tracking-[0.18em] text-accent uppercase hover:underline"
-      >
-        ← ByteLabs
-      </Link>
-
+    <Page>
       <h1 className="mt-6 text-[length:var(--bl-step-4)] font-semibold text-ink">{path.title}</h1>
       <p className="measure mt-3 text-[length:var(--bl-step-1)] text-muted">{path.subtitle}</p>
       <p className="measure mt-6 text-muted">{path.description}</p>
@@ -41,7 +35,7 @@ export default async function PathPage({ params }: { params: Promise<{ path: str
             <li key={id}>
               {available ? (
                 <Link
-                  href={`/tracks/${track.slug}`}
+                  href={`/course/${track.slug}`}
                   className="group block rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-accent/40"
                 >
                   <p className="font-mono text-[11px] tracking-[0.16em] text-subtle uppercase">
@@ -68,6 +62,6 @@ export default async function PathPage({ params }: { params: Promise<{ path: str
           );
         })}
       </ol>
-    </main>
+    </Page>
   );
 }

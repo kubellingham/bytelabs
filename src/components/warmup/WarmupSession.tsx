@@ -129,10 +129,7 @@ export function WarmupSession() {
 
   return (
     <div className="mx-auto flex min-h-dvh max-w-3xl flex-col px-8 py-10">
-      <div className="flex items-center justify-between">
-        <Link href="/" className="font-mono text-[11px] tracking-[0.18em] text-accent uppercase">
-          ← ByteLabs
-        </Link>
+      <div className="flex items-center justify-end">
         <ol className="flex gap-1.5" aria-label="Warm-up progress">
           {drills.map((entry, i) => (
             <li

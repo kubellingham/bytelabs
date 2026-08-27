@@ -3,38 +3,31 @@
 import Link from 'next/link';
 import type { ComponentProps } from 'react';
 
-import { GROUND_SCENARIOS, LEARNING_PATHS, TRACKS, getTrackById, lessonsInTrack } from '@/content';
+import { GROUND_SCENARIOS, TRACKS, lessonsInTrack } from '@/content';
 import { buildWarmupSession } from '@/lib/course/drills';
 import { dueConcepts } from '@/lib/mastery';
-import { localDateKey } from '@/lib/progress';
-import { dailyScenario, weeklyScenario } from '@/lib/schedule';
+import { dailyScenario } from '@/lib/schedule';
 import { useProgress } from '@/lib/storage/useProgress';
 
 /**
- * Generic over the href so `typedRoutes` can narrow each call site to the actual
- * route it links to, rather than widening every card to `unknown`.
+ * Generic over the href so `typedRoutes` narrows each call site to the route it
+ * actually links to, rather than widening every card to `unknown`.
  */
 function Card<T>({
   href,
   eyebrow,
   title,
   body,
-  accent,
 }: {
   href: ComponentProps<typeof Link<T>>['href'];
   eyebrow: string;
   title: string;
   body: string;
-  accent?: boolean;
 }) {
   return (
     <Link
       href={href}
-      className={`group block rounded-xl border px-5 py-4 transition-colors ${
-        accent
-          ? 'border-accent/30 bg-accent-soft/40 hover:border-accent/60'
-          : 'border-line bg-surface hover:border-accent/40'
-      }`}
+      className="group block rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-accent/40"
     >
       <p className="font-mono text-[11px] tracking-[0.16em] text-subtle uppercase">{eyebrow}</p>
       <h3 className="mt-1.5 font-semibold text-ink group-hover:text-accent">{title}</h3>
@@ -44,25 +37,19 @@ function Card<T>({
 }
 
 /**
- * The dashboard.
+ * Home.
  *
- * What it deliberately does not do: guilt anyone. There is no "you are about to
- * lose your streak", no percentage-complete bar on a track nobody promised to
- * finish, and no comparison to another learner. It shows what is worth doing next
- * and gets out of the way.
+ * This is a place to *resume*, not a directory — the navigation is the directory
+ * now, and a dashboard that repeats it just makes the app feel like one long pile
+ * of cards with no main road through it.
+ *
+ * What it still refuses to do: guilt anyone. No "you are about to lose your
+ * streak", no completion percentage on a track nobody promised to finish, and no
+ * comparison to another learner.
  */
 export function Dashboard() {
   const progress = useProgress();
 
-  const due = dueConcepts(progress);
-  const warmup = buildWarmupSession(due.map((entry) => entry.concept.id));
-  const daily = dailyScenario(GROUND_SCENARIOS);
-  const weekly = weeklyScenario(GROUND_SCENARIOS);
-
-  const dailyDone = progress.scheduled[`daily:${localDateKey(new Date())}`]?.completedAt != null;
-
-  // "Continue" is the furthest lesson touched, not the first unfinished one —
-  // people come back to where they were, not to where they slipped.
   const ordered = TRACKS.flatMap(lessonsInTrack);
   const lastLesson = ordered.findLast(({ lesson }) => progress.lessons[lesson.id] !== undefined);
   const firstLesson = ordered.find(
@@ -70,153 +57,84 @@ export function Dashboard() {
   );
 
   // Somebody who has never opened a lesson is not "picking up where they left
-  // off", and telling them they are is a small lie the whole dashboard rests on.
+  // off", and telling them they are is a small lie the whole page rests on.
   const returning = lastLesson !== undefined;
   const resume = lastLesson ?? firstLesson ?? null;
-  const totalXp = Object.entries(progress.xp)
-    .filter(([key]) => !key.startsWith('skill:'))
-    .reduce((sum, [, value]) => sum + value, 0);
+
+  const warmup = buildWarmupSession(dueConcepts(progress).map((entry) => entry.concept.id));
+  const daily = dailyScenario(GROUND_SCENARIOS);
 
   return (
-    <div className="mx-auto max-w-5xl px-8 py-16">
-      <header className="flex items-baseline justify-between gap-6">
-        <div>
-          <p className="font-mono text-[11px] tracking-[0.2em] text-accent uppercase">ByteLabs</p>
-          <h1 className="mt-2 text-[length:var(--bl-step-4)] font-semibold text-ink">
-            {returning ? 'Pick up where you left off.' : 'You learn to code by coding.'}
-          </h1>
-          <p className="measure mt-3 text-[length:var(--bl-step-1)] text-muted">
-            {returning
-              ? 'Or do something else entirely — nothing here is keeping score against you.'
-              : 'Not by reading about it, not by watching lectures. Start with the first track and write something.'}
-          </p>
-        </div>
-
-        <div className="shrink-0 text-end">
-          {progress.streak.current > 0 ? (
-            <p className="text-sm text-muted">
-              <span className="font-semibold text-ink">{progress.streak.current}</span>{' '}
-              {progress.streak.current === 1 ? 'day' : 'days'} running
-            </p>
-          ) : null}
-          {totalXp > 0 ? (
-            <p className="mt-1 text-sm text-subtle">{totalXp.toLocaleString()} XP</p>
-          ) : null}
-        </div>
+    <>
+      <header>
+        <h1 className="text-[length:var(--bl-step-4)] font-semibold text-ink">
+          {returning ? 'Pick up where you left off.' : 'You learn to code by coding.'}
+        </h1>
+        <p className="measure mt-3 text-[length:var(--bl-step-1)] text-muted">
+          {returning
+            ? 'Or do something else entirely — nothing here is keeping score against you.'
+            : 'Not by reading about it, not by watching lectures. Start with the first track and write something.'}
+        </p>
       </header>
 
       {resume ? (
-        <div className="mt-10">
-          <Card
-            accent
-            href={`/learn/${resume.track.slug}/${resume.unit.slug}/${resume.chapter.slug}/${resume.lesson.slug}`}
-            eyebrow={
-              returning
-                ? `${resume.track.title} · ${resume.chapter.title}`
-                : `Start here · ${resume.track.title}`
-            }
-            title={resume.lesson.title}
-            body={resume.lesson.summary}
-          />
-        </div>
+        <Link
+          href={`/learn/${resume.track.slug}/${resume.unit.slug}/${resume.chapter.slug}/${resume.lesson.slug}`}
+          className="group mt-10 block rounded-xl border border-accent/30 bg-accent-soft/40 px-6 py-5 transition-colors hover:border-accent/60"
+        >
+          <p className="font-mono text-[11px] tracking-[0.16em] text-subtle uppercase">
+            {returning
+              ? `Continue · ${resume.track.title} · ${resume.chapter.title}`
+              : `Start here · ${resume.track.title}`}
+          </p>
+          <h2 className="mt-1.5 text-[length:var(--bl-step-2)] font-semibold text-ink group-hover:text-accent">
+            {resume.lesson.title}
+          </h2>
+          <p className="measure mt-1 text-muted">{resume.lesson.summary}</p>
+        </Link>
       ) : null}
 
-      <section className="mt-10">
-        <h2 className="text-xs tracking-[0.14em] text-subtle uppercase">Worth doing today</h2>
+      <section className="mt-12">
+        <h2 className="text-xs tracking-[0.14em] text-subtle uppercase">The two ways in</h2>
         <div className="mt-4 grid gap-3 sm:grid-cols-2">
-          {warmup.length > 0 ? (
-            <Card
-              href="/warmup"
-              eyebrow="Warm-up"
-              title={`${warmup.length} ${warmup.length === 1 ? 'thing' : 'things'} starting to slip`}
-              body="A few minutes on whatever is closest to being forgotten."
-            />
-          ) : null}
-
-          {daily ? (
-            <Card
-              href={`/ground/${daily.slug}`}
-              eyebrow={dailyDone ? 'Today · done' : 'Today'}
-              title={daily.title}
-              body={`${daily.estimatedMinutes} minutes, a real brief, a different client each time.`}
-            />
-          ) : null}
-
-          {weekly ? (
-            <Card
-              href={`/ground/${weekly.slug}`}
-              eyebrow="This week"
-              title={weekly.title}
-              body="A bigger piece of work, for when you have an afternoon."
-            />
-          ) : null}
-
           <Card
-            href="/skills"
-            eyebrow="Where you are"
-            title="Your skill map"
-            body="What is solid, what is shaky, and what you have not touched."
+            href="/course"
+            eyebrow="Taught"
+            title="The Course"
+            body="Shown to you, then typed by you, then built from a brief with no help."
           />
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="text-xs tracking-[0.14em] text-subtle uppercase">Paths</h2>
-        <div className="mt-4 space-y-3">
-          {LEARNING_PATHS.map((path) => (
-            <Link
-              key={path.id}
-              href={`/paths/${path.slug}`}
-              className="group block rounded-xl border border-line bg-surface px-5 py-4 transition-colors hover:border-accent/40"
-            >
-              <div className="flex items-baseline justify-between gap-4">
-                <h3 className="font-semibold text-ink group-hover:text-accent">{path.title}</h3>
-                <p className="shrink-0 text-xs text-subtle">
-                  {path.trackIds.length} {path.trackIds.length === 1 ? 'track' : 'tracks'}
-                </p>
-              </div>
-              <p className="measure mt-1 text-sm text-muted">{path.subtitle}</p>
-              <ul className="mt-3 flex flex-wrap gap-1.5">
-                {path.trackIds.map((id) => {
-                  const track = getTrackById(id);
-                  if (!track) return null;
-                  return (
-                    <li
-                      key={id}
-                      className={`rounded-full px-2.5 py-0.5 text-[11px] ${
-                        track.status === 'available'
-                          ? 'bg-accent-soft text-accent'
-                          : 'bg-sunken text-subtle'
-                      }`}
-                    >
-                      {track.title}
-                      {track.status === 'available' ? '' : ' · soon'}
-                    </li>
-                  );
-                })}
-              </ul>
-            </Link>
-          ))}
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="text-xs tracking-[0.14em] text-subtle uppercase">Everything else</h2>
-        <div className="mt-4 grid gap-3 sm:grid-cols-2">
           <Card
             href="/ground"
-            eyebrow="The Ground"
-            title="Build something real"
-            body="No lessons, no unlocks, nothing to fail. Pick a brief and go."
-          />
-          <Card
-            href="/settings"
-            eyebrow="Settings"
-            title="Theme and skin"
-            body="Light by day, dark by evening — or pick one and keep it."
+            eyebrow="Open"
+            title="The Ground"
+            body="No lessons, no unlocks, nothing to fail. A client and a brief."
           />
         </div>
       </section>
-    </div>
+
+      {warmup.length > 0 || daily ? (
+        <section className="mt-12">
+          <h2 className="text-xs tracking-[0.14em] text-subtle uppercase">Worth doing today</h2>
+          <div className="mt-4 grid gap-3 sm:grid-cols-2">
+            {warmup.length > 0 ? (
+              <Card
+                href="/warmup"
+                eyebrow="Warm-up"
+                title={`${warmup.length} ${warmup.length === 1 ? 'thing' : 'things'} starting to slip`}
+                body="A few minutes on whatever is closest to being forgotten."
+              />
+            ) : null}
+            {daily ? (
+              <Card
+                href={`/ground/${daily.slug}`}
+                eyebrow="Today"
+                title={daily.title}
+                body={`${daily.estimatedMinutes} minutes, a real brief, a different client each time.`}
+              />
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+    </>
   );
 }

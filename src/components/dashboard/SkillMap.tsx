@@ -32,7 +32,7 @@ export function SkillMap() {
           Nothing to show yet. Do a lesson or build something and this fills in on its own.
         </p>
         <Link
-          href="/tracks/html-css"
+          href="/course/html-css"
           className="mt-6 inline-block rounded-lg bg-accent px-5 py-2.5 text-sm font-medium text-on-accent transition-colors hover:bg-accent-hover"
         >
           Start with HTML & CSS

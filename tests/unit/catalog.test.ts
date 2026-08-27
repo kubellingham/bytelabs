@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { CONCEPTS, isKnownConcept, SKILLS } from '@/content/concepts';
 import { allLessons, CATALOG, GROUND_SCENARIOS, TRACKS } from '@/content';
+import { defaultFileForBeat, resolveAnnotation } from '@/lib/content/annotations';
 import { planBeats } from '@/lib/content/beats';
 import { fillRequirements, resolveScenario } from '@/lib/content/variants';
 
@@ -115,6 +116,69 @@ describe('lesson beats', () => {
         }
       }
     }
+  });
+});
+
+describe('annotations', () => {
+  it('locates every authored fragment in the code the demo produces', () => {
+    const missing: string[] = [];
+
+    for (const { lesson, chapter } of allLessons()) {
+      for (const step of lesson.steps) {
+        if (step.kind !== 'demo') continue;
+        const plan = planBeats(lesson.startFiles, step.beats);
+
+        for (const beat of step.beats) {
+          for (const annotation of beat.annotations) {
+            // A fragment that cannot be found is an annotation the learner never
+            // sees — silent, and exactly the kind of rot a schema cannot catch.
+            const found = resolveAnnotation(annotation, plan.result, defaultFileForBeat(beat.edits));
+            if (!found) {
+              missing.push(`${chapter.slug}/${lesson.slug}/${beat.id}: ${annotation.find}`);
+            }
+          }
+        }
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
+  it('has unique annotation ids within a demo', () => {
+    for (const { lesson } of allLessons()) {
+      for (const step of lesson.steps) {
+        if (step.kind !== 'demo') continue;
+        const ids = step.beats.flatMap((beat) => beat.annotations.map((a) => a.id));
+        expect(new Set(ids).size, `${lesson.slug}/${step.id}`).toBe(ids.length);
+      }
+    }
+  });
+
+  it('gives every authored demo something to break down', () => {
+    for (const { lesson, chapter } of allLessons()) {
+      for (const step of lesson.steps) {
+        if (step.kind !== 'demo') continue;
+        const total = step.beats.reduce((sum, beat) => sum + beat.annotations.length, 0);
+        expect(total, `${chapter.slug}/${lesson.slug} has no breakdown`).toBeGreaterThan(0);
+      }
+    }
+  });
+
+  it('tags annotations only with concepts that exist', () => {
+    const unknown = new Set<string>();
+    for (const { lesson } of allLessons()) {
+      for (const step of lesson.steps) {
+        if (step.kind !== 'demo') continue;
+        for (const beat of step.beats) {
+          for (const annotation of beat.annotations) {
+            for (const concept of annotation.concepts) {
+              if (!isKnownConcept(concept)) unknown.add(concept);
+            }
+          }
+        }
+      }
+    }
+    expect([...unknown]).toEqual([]);
   });
 });
 

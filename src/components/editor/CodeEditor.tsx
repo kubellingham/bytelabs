@@ -15,6 +15,14 @@ import {
 } from '@codemirror/view';
 import { useEffect, useMemo, useRef, useState } from 'react';
 
+import {
+  anatomyExtension,
+  EMPTY_ANATOMY,
+  rangeAtOffset,
+  readAnatomy,
+  setAnatomy,
+  type AnatomyState,
+} from '@/lib/editor/anatomy';
 import { EMPTY_GHOST, ghostExtension, setGhost, type GhostState } from '@/lib/editor/ghost';
 import { byteLabsEditorTheme, byteLabsHighlighting } from '@/lib/editor/theme';
 
@@ -36,6 +44,10 @@ export interface CodeEditorProps {
   value: string;
   onChange: (value: string) => void;
   ghost?: GhostState;
+  /** Resolved annotation ranges plus which one is being explained. */
+  anatomy?: AnatomyState;
+  /** Fired when the learner clicks an annotated fragment to ask what it is. */
+  onPickAnnotation?: (id: string) => void;
   readOnly?: boolean;
   ariaLabel?: string;
 }
@@ -54,6 +66,8 @@ export function CodeEditor({
   value,
   onChange,
   ghost,
+  anatomy,
+  onPickAnnotation,
   readOnly = false,
   ariaLabel,
 }: CodeEditorProps) {
@@ -62,6 +76,7 @@ export function CodeEditor({
 
   const listener = useMemo(() => new Compartment(), []);
   const editable = useMemo(() => new Compartment(), []);
+  const picker = useMemo(() => new Compartment(), []);
 
   const extensions = useMemo<Extension[]>(
     () => [
@@ -78,11 +93,13 @@ export function CodeEditor({
       byteLabsHighlighting,
       byteLabsEditorTheme,
       ghostExtension(),
+      anatomyExtension(),
       EditorView.lineWrapping,
       editable.of(EditorState.readOnly.of(false)),
       listener.of([]),
+      picker.of([]),
     ],
-    [path, listener, editable],
+    [path, listener, editable, picker],
   );
 
   // `value` seeds the document here and is reconciled by the effect below; it is
@@ -132,6 +149,38 @@ export function CodeEditor({
   useEffect(() => {
     view?.dispatch({ effects: setGhost.of(ghost ?? EMPTY_GHOST) });
   }, [view, ghost]);
+
+  useEffect(() => {
+    view?.dispatch({ effects: setAnatomy.of(anatomy ?? EMPTY_ANATOMY) });
+  }, [view, anatomy]);
+
+  // Clicking an annotated fragment asks what it is. In its own compartment so a
+  // new callback reconfigures the handler rather than rebuilding the editor.
+  useEffect(() => {
+    if (!view) return;
+    view.dispatch({
+      effects: picker.reconfigure(
+        onPickAnnotation
+          ? EditorView.domEventHandlers({
+              mousedown(event, instance) {
+                const state = readAnatomy(instance);
+                if (!state.interactive || state.ranges.length === 0) return false;
+
+                const offset = instance.posAtCoords({ x: event.clientX, y: event.clientY });
+                if (offset === null) return false;
+
+                const hit = rangeAtOffset(state, offset);
+                if (!hit) return false;
+
+                event.preventDefault();
+                onPickAnnotation(hit.id);
+                return true;
+              },
+            })
+          : [],
+      ),
+    });
+  }, [view, picker, onPickAnnotation]);
 
   return (
     <div
