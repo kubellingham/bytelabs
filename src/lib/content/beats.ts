@@ -38,6 +38,12 @@ export interface BeatPlan {
   beats: PlannedBeat[];
   /** Files as they stand once every beat has played. This becomes the ghost. */
   result: WorkspaceFiles;
+  /**
+   * Concepts owed to each line of each resulting file, derived from which beat
+   * wrote it. Ghost opacity is per-line, so the mastery engine needs the tags at
+   * line granularity — a lesson-level tag could never fade flexbox before grid.
+   */
+  lineConcepts: Record<string, string[][]>;
 }
 
 function resolveEdit(beatId: string, files: WorkspaceFiles, edit: Edit): PlannedEdit {
@@ -73,6 +79,49 @@ function applyPlanned(files: WorkspaceFiles, edit: PlannedEdit): WorkspaceFiles 
 }
 
 /**
+ * Per-character record of which beat wrote it, spliced in step with the text so
+ * later edits shift ownership exactly as they shift content.
+ */
+type Ownership = Record<string, (string | null)[]>;
+
+function applyOwnership(ownership: Ownership, edit: PlannedEdit, beatId: string): void {
+  const current = ownership[edit.file] ?? [];
+  const inserted: (string | null)[] = new Array<string | null>(edit.text.length).fill(beatId);
+  current.splice(edit.offset, edit.removedLength, ...inserted);
+  ownership[edit.file] = current;
+}
+
+/** Collapses per-character ownership into the concepts owed to each line. */
+function lineConceptsFrom(
+  files: WorkspaceFiles,
+  ownership: Ownership,
+  conceptsByBeat: Map<string, string[]>,
+): Record<string, string[][]> {
+  const out: Record<string, string[][]> = {};
+
+  for (const [file, contents] of Object.entries(files)) {
+    const owners = ownership[file] ?? [];
+    const lines: string[][] = [];
+    let offset = 0;
+
+    for (const line of contents.split('\n')) {
+      const seen = new Set<string>();
+      for (let i = 0; i < line.length; i += 1) {
+        const beatId = owners[offset + i];
+        if (!beatId) continue;
+        for (const concept of conceptsByBeat.get(beatId) ?? []) seen.add(concept);
+      }
+      lines.push([...seen]);
+      offset += line.length + 1; // + the newline
+    }
+
+    out[file] = lines;
+  }
+
+  return out;
+}
+
+/**
  * Resolves every beat's anchors against the file state at the moment that beat
  * plays, and reports the final files.
  *
@@ -84,14 +133,30 @@ function applyPlanned(files: WorkspaceFiles, edit: PlannedEdit): WorkspaceFiles 
 export function planBeats(startFiles: WorkspaceFiles, beats: readonly Beat[]): BeatPlan {
   let files: WorkspaceFiles = { ...startFiles };
   const planned: PlannedBeat[] = [];
+  const ownership: Ownership = {};
+  const conceptsByBeat = new Map<string, string[]>();
+
+  for (const [file, contents] of Object.entries(startFiles)) {
+    // Starter content belongs to no beat, so it carries no concepts of its own.
+    ownership[file] = new Array<string | null>(contents.length).fill(null);
+  }
 
   for (const beat of beats) {
+    conceptsByBeat.set(beat.id, beat.concepts);
     const edits: PlannedEdit[] = [];
+
     for (const edit of beat.edits) {
       const resolved = resolveEdit(beat.id, files, edit);
       edits.push(resolved);
+      if (!ownership[resolved.file]) {
+        ownership[resolved.file] = new Array<string | null>(
+          (files[resolved.file] ?? '').length,
+        ).fill(null);
+      }
+      applyOwnership(ownership, resolved, beat.id);
       files = applyPlanned(files, resolved);
     }
+
     planned.push({
       id: beat.id,
       note: beat.note,
@@ -102,7 +167,11 @@ export function planBeats(startFiles: WorkspaceFiles, beats: readonly Beat[]): B
     });
   }
 
-  return { beats: planned, result: files };
+  return {
+    beats: planned,
+    result: files,
+    lineConcepts: lineConceptsFrom(files, ownership, conceptsByBeat),
+  };
 }
 
 /** Total characters typed across a plan — used to estimate a demo's running time. */
