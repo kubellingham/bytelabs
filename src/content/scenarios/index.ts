@@ -148,6 +148,87 @@ const PROFILE_CARD: ScenarioInput = {
       '<!doctype html>\n<html lang="en">\n  <head>\n    <meta charset="utf-8">\n    <meta name="viewport" content="width=device-width, initial-scale=1">\n    <title>{{clientName}}</title>\n    <link rel="stylesheet" href="styles.css">\n  </head>\n  <body>\n    <main>\n      <!-- The card goes here. -->\n    </main>\n  </body>\n</html>\n',
     'styles.css': 'body {\n  font-family: system-ui, sans-serif;\n  line-height: 1.6;\n  margin: 2rem;\n}\n',
   },
+  /**
+   * Assisted Mode's worked example. It solves the brief for whichever client the
+   * learner was given, then fades to ghost so they write it themselves — and on a
+   * second variant the brief is different enough that it is not muscle memory of
+   * one page, but of the shape of a card.
+   */
+  walkthrough: [
+    {
+      id: 'w1',
+      note: 'The card should make sense lifted onto another page, so it is an article rather than a div.',
+      concepts: ['semantic-article'],
+      edits: [
+        {
+          file: 'index.html',
+          replace: '      <!-- The card goes here. -->\n',
+          text: '      <article class="card">\n      </article>\n',
+        },
+      ],
+      holdMs: 400,
+    },
+    {
+      id: 'w2',
+      note: 'Their name is what the card is about, so it is the heading — not a styled paragraph.',
+      concepts: ['heading-outline'],
+      edits: [
+        {
+          file: 'index.html',
+          after: '      <article class="card">\n',
+          text: '        <h1>{{clientName}}</h1>\n',
+        },
+      ],
+    },
+    {
+      id: 'w3',
+      note: 'The photo. The alt text describes the person, because that is what someone who cannot see it needs — not the filename.',
+      concepts: ['img-alt', 'img-sizing'],
+      edits: [
+        {
+          file: 'index.html',
+          after: '        <h1>{{clientName}}</h1>\n',
+          text: '        <img class="card__photo" src="https://placehold.co/240x240" alt="{{clientName}}, {{profession}}" width="240" height="240">\n',
+        },
+      ],
+      holdMs: 300,
+    },
+    {
+      id: 'w4',
+      note: 'One line on what they do, and a way to reach them. Link text that means something on its own.',
+      concepts: ['paragraphs', 'link-href', 'link-text'],
+      edits: [
+        {
+          file: 'index.html',
+          after: '" width="240" height="240">\n',
+          text: '        <p>{{tagline}}</p>\n        <a href="mailto:hello@example.com">Email {{clientName}}</a>\n',
+        },
+      ],
+    },
+    {
+      id: 'w5',
+      note: 'Now the styling. A class selector, and padding so the card has room to breathe.',
+      concepts: ['class-selectors', 'box-model'],
+      edits: [
+        {
+          file: 'styles.css',
+          text: '\n.card {\n  max-inline-size: 22rem;\n  padding: 1.5rem;\n  border: 1px solid #e4e4e9;\n  border-radius: 0.75rem;\n}\n',
+        },
+      ],
+      holdMs: 300,
+    },
+    {
+      id: 'w6',
+      note: 'And the photo. aspect-ratio keeps its shape whatever the source image is, which stops the layout jumping as it loads.',
+      concepts: ['img-sizing', 'declarations'],
+      edits: [
+        {
+          file: 'styles.css',
+          text: '\n.card__photo {\n  inline-size: 100%;\n  block-size: auto;\n  aspect-ratio: 1;\n  object-fit: cover;\n  border-radius: 0.5rem;\n}\n',
+        },
+      ],
+    },
+  ],
 };
 
 const CONTACT_FORM: ScenarioInput = {

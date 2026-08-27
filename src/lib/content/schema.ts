@@ -219,6 +219,16 @@ export const scenarioSchema = z.object({
    */
   requirements: z.array(requirementSchema).min(1),
   starterFiles: workspaceFilesSchema.default({}),
+  /**
+   * Assisted Mode's demonstration: the same concurrent typing mechanic as the
+   * Course, showing one way through the brief before the learner is asked to write
+   * it. Optional — a scenario without one still runs in Assisted Mode, it just has
+   * the requirement detail and the assistant rather than a worked example.
+   *
+   * Beat text may carry `{{placeholders}}`, filled per variant like everything else,
+   * so the demonstration is about the client the learner was actually given.
+   */
+  walkthrough: z.array(beatSchema).optional(),
 });
 export type Scenario = z.infer<typeof scenarioSchema>;
 

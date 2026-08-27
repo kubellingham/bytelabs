@@ -149,6 +149,32 @@ describe('requirements', () => {
     }
   });
 
+  it('resolves every walkthrough anchor for every variant', () => {
+    for (const scenario of GROUND_SCENARIOS) {
+      if (!scenario.walkthrough) continue;
+      for (const variant of scenario.variants) {
+        const resolved = resolveScenario(scenario, variant);
+        expect(
+          () => planBeats(resolved.starterFiles, resolved.walkthrough ?? []),
+          `${scenario.id}/${variant.id}`,
+        ).not.toThrow();
+      }
+    }
+  });
+
+  it('produces a walkthrough result that satisfies its own brief structurally', () => {
+    for (const scenario of GROUND_SCENARIOS) {
+      if (!scenario.walkthrough) continue;
+      const variant = scenario.variants[0]!;
+      const resolved = resolveScenario(scenario, variant);
+      const plan = planBeats(resolved.starterFiles, resolved.walkthrough ?? []);
+      // A worked example that does not actually build the thing would teach the
+      // wrong shape, so the demonstration is checked against the brief's own words.
+      expect(plan.result['index.html']).toContain('<article');
+      expect(plan.result['index.html']).toContain(variant.values.clientName ?? '');
+    }
+  });
+
   it('holds every variant to an identical requirement structure', () => {
     for (const scenario of GROUND_SCENARIOS) {
       const shape = (values: Record<string, string>) =>

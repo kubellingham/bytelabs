@@ -1,5 +1,5 @@
 import type { Check, Requirement } from './checks';
-import type { Prose, Scenario, Variant } from './schema';
+import type { Beat, Prose, Scenario, Variant } from './schema';
 
 const TOKEN = /\{\{\s*([\w.-]+)\s*\}\}/g;
 
@@ -48,12 +48,26 @@ export function fillRequirements(
   }));
 }
 
+function fillBeats(beats: readonly Beat[], values: Record<string, string>): Beat[] {
+  return beats.map((beat) => ({
+    ...beat,
+    note: fill(beat.note, values),
+    edits: beat.edits.map((edit) => ({
+      ...edit,
+      text: fill(edit.text, values),
+      ...(edit.after !== undefined ? { after: fill(edit.after, values) } : {}),
+      ...(edit.replace !== undefined ? { replace: fill(edit.replace, values) } : {}),
+    })),
+  }));
+}
+
 export interface ResolvedScenario {
   scenario: Scenario;
   variant: Variant;
   brief: Prose[];
   requirements: Requirement[];
   starterFiles: Record<string, string>;
+  walkthrough: Beat[] | null;
 }
 
 export function resolveScenario(scenario: Scenario, variant: Variant): ResolvedScenario {
@@ -67,6 +81,7 @@ export function resolveScenario(scenario: Scenario, variant: Variant): ResolvedS
     brief: fillProse(scenario.brief, variant.values),
     requirements: fillRequirements(scenario.requirements, variant.values),
     starterFiles,
+    walkthrough: scenario.walkthrough ? fillBeats(scenario.walkthrough, variant.values) : null,
   };
 }
 
