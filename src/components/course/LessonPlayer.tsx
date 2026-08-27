@@ -3,12 +3,14 @@
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 
+import { AssistPanel } from '@/components/assist/AssistPanel';
 import { Prose } from '@/components/course/Prose';
 import { RequirementList } from '@/components/course/RequirementList';
 import { Workspace } from '@/components/editor/Workspace';
 import { Preview } from '@/components/runner/Preview';
 import { useRequirements } from '@/components/runner/useRequirements';
 import type { LessonLocation } from '@/content';
+import { getConcept } from '@/content/concepts';
 import { newlyMatchedConcepts, resolveLines, type Resolution } from '@/lib/editor/resolve';
 import type { GhostState } from '@/lib/editor/ghost';
 import { planLesson } from '@/lib/course/plan';
@@ -161,6 +163,18 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
   if (!step || !planned) return null;
 
   /* ------------------------------------------------------------- Render */
+
+  // What the current step is teaching, so an answer is about the thing in front of
+  // them rather than the lesson in general.
+  const activeConcept = (() => {
+    const ids =
+      step.kind === 'explain' || step.kind === 'practice'
+        ? step.concepts
+        : step.kind === 'demo'
+          ? (step.beats[Math.max(0, playback.beatIndex)]?.concepts ?? [])
+          : [];
+    return ids.map((id) => getConcept(id)?.label).filter(Boolean).join(', ');
+  })();
 
   const continueLabel = (() => {
     if (isLast) return lessonDone ? 'Lesson complete' : 'Finish lesson';
@@ -355,6 +369,15 @@ export function LessonPlayer({ location }: { location: LessonLocation }) {
           </div>
         </section>
       </div>
+
+      <AssistPanel
+        context={{
+          zone: 'course',
+          title: `${chapter.title} — ${lesson.title}`,
+          ...(activeConcept ? { concept: activeConcept } : {}),
+          files,
+        }}
+      />
     </div>
   );
 }

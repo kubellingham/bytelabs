@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useCallback, useMemo, useState } from 'react';
 
+import { AssistPanel } from '@/components/assist/AssistPanel';
 import { Prose } from '@/components/course/Prose';
 import { RequirementList } from '@/components/course/RequirementList';
 import { Workspace } from '@/components/editor/Workspace';
@@ -342,6 +343,19 @@ export function ScenarioRunner({ scenario }: { scenario: Scenario }) {
           </div>
         </section>
       </div>
+
+      {/*
+        Available in both modes, because raw mode means no unsolicited help — not
+        that the door is locked. It stays silent until it is asked, and answers
+        more tersely when it is.
+      */}
+      <AssistPanel
+        context={{
+          zone: mode === 'raw' ? 'ground-raw' : 'ground-assisted',
+          title: `${scenario.title} — ${variant.label}`,
+          files,
+        }}
+      />
     </div>
   );
 }
