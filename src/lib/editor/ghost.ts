@@ -1,4 +1,4 @@
-import { StateEffect, StateField, type Extension } from '@codemirror/state';
+import { StateEffect, StateField, type EditorState, type Extension } from '@codemirror/state';
 import { Decoration, EditorView, WidgetType, type DecorationSet } from '@codemirror/view';
 
 import { ghostLevelForConcepts, type GhostLevel } from '@/lib/mastery';
@@ -95,10 +95,10 @@ function levelForLine(state: GhostState, index: number): GhostLevel {
   return ghostLevelForConcepts(state.lineConcepts[index] ?? [], state.strengths);
 }
 
-function buildDecorations(view: EditorView, state: GhostState): DecorationSet {
+function buildDecorations(editorState: EditorState, state: GhostState): DecorationSet {
   if (!state.enabled || state.target.length === 0) return Decoration.none;
 
-  const doc = view.state.doc;
+  const doc = editorState.doc;
   const resolution: Resolution = resolveLines(doc.toString(), state.target);
   const decorations = [];
 
@@ -143,15 +143,28 @@ const ghostStateField = StateField.define<GhostState>({
 });
 
 /**
- * The ghost layer. Decorations are rebuilt from the document on every change,
- * which is affordable because a lesson file is a few hundred characters and the
- * work is a line-by-line string comparison.
+ * Decorations come from a StateField rather than a view-computed facet because the
+ * pending-lines widget is a *block* widget, and CodeMirror only accepts block
+ * decorations from directly-provided sources. Computing them from the view throws
+ * at runtime — which is exactly what it did before this was a field.
+ *
+ * Rebuilding on every document change is affordable: a lesson file is a few hundred
+ * characters and the work is a line-by-line string comparison.
  */
+const ghostDecorationField = StateField.define<DecorationSet>({
+  create: (editorState) => buildDecorations(editorState, EMPTY_GHOST),
+  update(value, transaction) {
+    const changedGhost = transaction.effects.some((effect) => effect.is(setGhost));
+    if (!transaction.docChanged && !changedGhost) return value;
+    // ghostStateField is listed first in the extension array, so it has already
+    // taken this transaction's effect into account by the time this runs.
+    return buildDecorations(transaction.state, transaction.state.field(ghostStateField));
+  },
+  provide: (field) => EditorView.decorations.from(field),
+});
+
 export function ghostExtension(): Extension {
-  return [
-    ghostStateField,
-    EditorView.decorations.of((view) => buildDecorations(view, view.state.field(ghostStateField))),
-  ];
+  return [ghostStateField, ghostDecorationField];
 }
 
 export { ghostStateField };
