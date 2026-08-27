@@ -14,7 +14,14 @@ breaking it, and doing it again until your hands just know.
 **The Course** is ByteLabs-owned curriculum. A lesson opens full screen with just the
 explanation. When you're done reading, the panel slides left and an editor arrives. Code then
 types itself out at a human pace, beat by beat, with the note explaining *those specific lines*
-alongside it. That code fades to ghost text, and you type over it. Each unit ends in a client
+alongside it.
+
+Then it comes apart. The **breakdown** walks the code a fragment at a time — `link` is the
+element, `rel` is the relationship, `href` is where to find it — with each piece lit up in the
+editor while the rest of the file dims. It goes at your pace, it can be skipped, and afterwards
+every annotated fragment stays clickable so "what was that again" costs one click.
+
+Only then does the code fade to ghost text and you type over it. Each unit ends in a client
 brief with no help at all.
 
 **The Ground** is open practice. No lessons, no unlocks, nothing to fail. A brief, a client,
@@ -54,6 +61,7 @@ and none would be trustworthy.
 | Editor & ghost | `src/lib/editor/`, `src/components/editor/` | CodeMirror 6. Ghost text is a decoration layer that never occupies the document, so every keystroke is the learner's. |
 | Runner & checks | `src/lib/runner/` | Sandboxed preview, plus a declarative check DSL evaluated inside the frame. Serves both graduations and Ground scenarios. |
 | Content | `src/content/`, `src/lib/content/` | Zod-validated. Malformed content fails the build rather than reaching a learner. |
+| Navigation | `src/components/shell/` | A persistent bar naming both zones, on every page that isn't a full-height workspace. |
 | Theme | `src/styles/` | Every colour is a custom property. Auto time-of-day, five skins, no layout change. |
 
 ### Content is data
@@ -61,10 +69,16 @@ and none would be trustworthy.
 A lesson is `Path → Track → Unit → Chapter → Lesson → Step`, and steps map onto the six acts:
 `explain` → `demo` → `practice` → `check`.
 
-The concurrent typing mechanic is modelled as **beats** — `{ note, edits }` — so a note appears
-as its lines type. Concepts are tagged *per beat*, which is the granularity ghost fade needs: a
-learner who has written twenty flexbox containers and three grids should see the flexbox
-scaffolding disappear first.
+The concurrent typing mechanic is modelled as **beats** — `{ note, edits, annotations }`.
+
+A **note** says *why* a beat is being written; an **annotation** says *what one fragment of it
+is*. Annotations are located by searching whatever document is on screen rather than by stored
+offsets, which is what lets one definition light up the demo's code and, later, the learner's own
+copy of the same line.
+
+Concepts are tagged *per beat*, which is the granularity ghost fade needs: a learner who has
+written twenty flexbox containers and three grids should see the flexbox scaffolding disappear
+first.
 
 A Ground scenario is authored once as a skill spec, a requirement set, and a brief with
 `{{placeholders}}`. Variants swap the client and the copy; the requirement array is literally
@@ -73,8 +87,9 @@ shared, so brief variety cannot drift the standard. `tests/unit/catalog.test.ts`
 ### Adding content
 
 Author against the `*Input` types in `src/lib/content/schema.ts` and add it to the catalog. The
-test suite will tell you if a beat anchor no longer resolves, a concept tag doesn't exist, an id
-collides, or a variant leaves an unresolved placeholder.
+test suite will tell you if a beat anchor no longer resolves, an annotation fragment can't be
+found in the code it describes, a concept tag doesn't exist, an id collides, a variant leaves an
+unresolved placeholder, or your prose contains markup the renderer can't render.
 
 ## What this build deliberately does not do
 
