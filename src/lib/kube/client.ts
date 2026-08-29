@@ -1,14 +1,18 @@
-import type { TopicContext, Verdict, KubeEntitlement } from './types';
+import type {
+  ExchangeResult,
+  TopicContext,
+  VerdictPayload,
+  VerdictResponse,
+  KubeEntitlement,
+} from './types';
 
 function kubeUrl(): string {
   return process.env.KUBE_API_URL || 'https://studying-kube.vercel.app';
 }
 
-function sharedSecret(): string {
-  const secret = process.env.KUBE_SHARED_SECRET;
-  if (!secret) throw new Error('KUBE_SHARED_SECRET is not configured');
-  return secret;
-}
+type KubeResult<T> =
+  | { ok: true; data: T }
+  | { ok: false; error: string; status: number };
 
 async function kubeRequest<T>(
   path: string,
@@ -17,12 +21,11 @@ async function kubeRequest<T>(
     body?: unknown;
     bearerToken?: string;
   } = {},
-): Promise<{ ok: true; data: T } | { ok: false; error: string; status: number }> {
+): Promise<KubeResult<T>> {
   try {
     const { method = 'GET', body, bearerToken } = options;
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
-      'X-ByteLabs-Secret': sharedSecret(),
     };
     if (bearerToken) {
       headers['Authorization'] = `Bearer ${bearerToken}`;
@@ -57,54 +60,55 @@ async function kubeRequest<T>(
 }
 
 /**
- * Exchange a handoff code for topic context.
- * Kube verifies the code, returns the topic to practise.
+ * Step 1: Exchange a handoff code for an idToken + course/topic IDs.
+ * The code is single-use, 60-second TTL.
  */
 export async function exchangeHandoffCode(
   code: string,
-): Promise<{ ok: true; data: TopicContext } | { ok: false; error: string; status: number }> {
-  return kubeRequest<TopicContext>('/api/bytelabs/exchange', {
+): Promise<KubeResult<ExchangeResult>> {
+  return kubeRequest<ExchangeResult>('/api/handoff/exchange', {
     method: 'POST',
     body: { code },
   });
 }
 
 /**
- * Fetch topic context directly (for cases where ByteLabs already has the
- * user's token — e.g. the learner navigates to a topic from within ByteLabs).
+ * Step 2: Fetch the full topic context using the idToken from the exchange.
  */
 export async function fetchTopicContext(
   courseId: string,
   topicId: string,
   bearerToken: string,
-): Promise<{ ok: true; data: TopicContext } | { ok: false; error: string; status: number }> {
+): Promise<KubeResult<TopicContext>> {
   return kubeRequest<TopicContext>(
-    `/api/bytelabs/topic?courseId=${encodeURIComponent(courseId)}&topicId=${encodeURIComponent(topicId)}`,
+    `/api/bytelabs/topic?course=${encodeURIComponent(courseId)}&topic=${encodeURIComponent(topicId)}`,
     { bearerToken },
   );
 }
 
 /**
- * Post a verdict back to Kube after practice.
+ * Step 3: Check entitlement — POST, not GET.
  */
-export async function postVerdict(
-  verdict: Verdict,
+export async function checkEntitlement(
   bearerToken: string,
-): Promise<{ ok: true; data: { received: true } } | { ok: false; error: string; status: number }> {
-  return kubeRequest<{ received: true }>('/api/bytelabs/verdict', {
+): Promise<KubeResult<KubeEntitlement>> {
+  return kubeRequest<KubeEntitlement>('/api/entitlement/introspect', {
     method: 'POST',
-    body: verdict,
     bearerToken,
   });
 }
 
 /**
- * Check a user's entitlement on the Kube side.
+ * Step 4: Post a verdict back to Kube after practice.
+ * The response includes a redirectUrl to send the learner back.
  */
-export async function checkEntitlement(
+export async function postVerdict(
+  payload: VerdictPayload,
   bearerToken: string,
-): Promise<{ ok: true; data: KubeEntitlement } | { ok: false; error: string; status: number }> {
-  return kubeRequest<KubeEntitlement>('/api/entitlement/introspect', {
+): Promise<KubeResult<VerdictResponse>> {
+  return kubeRequest<VerdictResponse>('/api/bytelabs/verdict', {
+    method: 'POST',
+    body: payload,
     bearerToken,
   });
 }

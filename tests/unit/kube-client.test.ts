@@ -5,7 +5,6 @@ describe('Kube client', () => {
 
   beforeEach(() => {
     process.env.KUBE_API_URL = 'https://test-kube.example.com';
-    process.env.KUBE_SHARED_SECRET = 'test-secret-256bit-hex-value';
   });
 
   afterEach(() => {
@@ -13,19 +12,14 @@ describe('Kube client', () => {
     vi.restoreAllMocks();
   });
 
-  it('exchangeHandoffCode sends code and shared secret', async () => {
+  it('exchangeHandoffCode sends code to /api/handoff/exchange', async () => {
     const mockResponse = {
-      courseId: 'int42d',
-      courseCode: 'INT42D',
-      courseTitle: 'Internet and Web Technologies',
-      topicId: 'u4-html-tables',
-      topicTitle: 'HTML Tables',
-      unit: 4,
-      recap: ['Tables use <table>'],
-      whyItMatters: 'Tables matter',
-      deps: [],
-      practiceShape: 'editor-gym' as const,
+      idToken: 'firebase-id-token',
       uid: 'test-uid',
+      email: 'test@example.com',
+      courseId: 'int42d',
+      topicId: 'u4-html-tables',
+      mode: 'practice',
     };
 
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
@@ -37,47 +31,50 @@ describe('Kube client', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.data.idToken).toBe('firebase-id-token');
       expect(result.data.courseId).toBe('int42d');
       expect(result.data.topicId).toBe('u4-html-tables');
-      expect(result.data.practiceShape).toBe('editor-gym');
+      expect(result.data.mode).toBe('practice');
     }
 
     expect(fetchSpy).toHaveBeenCalledOnce();
     const [url, opts] = fetchSpy.mock.calls[0]!;
-    expect(url).toBe('https://test-kube.example.com/api/bytelabs/exchange');
+    expect(url).toBe('https://test-kube.example.com/api/handoff/exchange');
     expect(opts?.method).toBe('POST');
-    const headers = opts?.headers as Record<string, string>;
-    expect(headers['X-ByteLabs-Secret']).toBe('test-secret-256bit-hex-value');
     expect(JSON.parse(opts?.body as string)).toEqual({ code: 'test-code-123' });
   });
 
   it('postVerdict sends verdict with bearer token', async () => {
+    const mockResponse = {
+      acknowledged: true,
+      kubeAction: 'advance-topic',
+      redirectUrl: 'https://studying-kube.vercel.app/course/int42d',
+    };
+
     const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ received: true }), { status: 200 }),
+      new Response(JSON.stringify(mockResponse), { status: 200 }),
     );
 
     const { postVerdict } = await import('@/lib/kube/client');
     const verdict = {
-      courseId: 'int42d',
-      topicId: 'u4-html-tables',
-      uid: 'test-uid',
-      result: 'solid' as const,
-      concepts: [
-        { conceptId: 'table-structure', label: 'Table structure', result: 'solid' as const },
-      ],
-      durationSeconds: 300,
-      attempts: 1,
-      timestamp: '2026-08-29T14:00:00Z',
+      course: 'int42d',
+      topic: 'u4-html-tables',
+      verdict: 'solid' as const,
+      evidence: '5/5 requirements met',
     };
 
     const result = await postVerdict(verdict, 'fake-bearer-token');
     expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.acknowledged).toBe(true);
+      expect(result.data.kubeAction).toBe('advance-topic');
+      expect(result.data.redirectUrl).toContain('studying-kube');
+    }
 
     const [url, opts] = fetchSpy.mock.calls[0]!;
     expect(url).toBe('https://test-kube.example.com/api/bytelabs/verdict');
     const headers = opts?.headers as Record<string, string>;
     expect(headers['Authorization']).toBe('Bearer fake-bearer-token');
-    expect(headers['X-ByteLabs-Secret']).toBe('test-secret-256bit-hex-value');
   });
 
   it('returns error on non-ok response', async () => {
@@ -108,24 +105,38 @@ describe('Kube client', () => {
     }
   });
 
-  it('returns error when KUBE_SHARED_SECRET is missing', async () => {
-    delete process.env.KUBE_SHARED_SECRET;
-    vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response('{}', { status: 200 }),
+  it('fetchTopicContext calls correct endpoint with bearer token', async () => {
+    const mockContext = {
+      topic: { id: 'u4-html-tables', title: 'HTML Tables', unit: 4, weight: 'medium', whyItMatters: 'Tables matter', recap: [], deps: [] },
+      signals: { reviewMisses: 0, mistakes: 0, flags: [] },
+      mode: 'practice',
+      conceptTells: [{ term: 'table', tell: 'Use <table> for tabular data' }],
+      returnUrl: 'https://studying-kube.vercel.app/course/int42d',
+    };
+
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify(mockContext), { status: 200 }),
     );
 
-    const { exchangeHandoffCode } = await import('@/lib/kube/client');
-    const result = await exchangeHandoffCode('any-code');
+    const { fetchTopicContext } = await import('@/lib/kube/client');
+    const result = await fetchTopicContext('int42d', 'u4-html-tables', 'fake-id-token');
 
-    expect(result.ok).toBe(false);
-    if (!result.ok) {
-      expect(result.error).toContain('KUBE_SHARED_SECRET');
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.data.topic.title).toBe('HTML Tables');
+      expect(result.data.conceptTells).toHaveLength(1);
+      expect(result.data.returnUrl).toContain('studying-kube');
     }
+
+    const [url, opts] = fetchSpy.mock.calls[0]!;
+    expect(url).toBe('https://test-kube.example.com/api/bytelabs/topic?course=int42d&topic=u4-html-tables');
+    const headers = opts?.headers as Record<string, string>;
+    expect(headers['Authorization']).toBe('Bearer fake-id-token');
   });
 
   it('checkEntitlement returns tier info', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(
-      new Response(JSON.stringify({ tier: 'summit', source: 'stripe', expiresAt: null }), {
+      new Response(JSON.stringify({ entitled: true, tier: 'summit' }), {
         status: 200,
       }),
     );
@@ -135,8 +146,8 @@ describe('Kube client', () => {
 
     expect(result.ok).toBe(true);
     if (result.ok) {
+      expect(result.data.entitled).toBe(true);
       expect(result.data.tier).toBe('summit');
-      expect(result.data.source).toBe('stripe');
     }
   });
 });

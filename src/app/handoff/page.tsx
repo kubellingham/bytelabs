@@ -4,12 +4,12 @@ import { useEffect, useState, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Page } from '@/components/shell/Page';
-import type { TopicContext } from '@/lib/kube/types';
+import type { HandoffSession } from '@/lib/kube/types';
 
 type HandoffState =
   | { phase: 'exchanging' }
   | { phase: 'error'; message: string }
-  | { phase: 'ready'; topic: TopicContext };
+  | { phase: 'ready'; session: HandoffSession };
 
 function HandoffContent() {
   const params = useSearchParams();
@@ -40,16 +40,17 @@ function HandoffContent() {
           return;
         }
 
-        const topic: TopicContext = await res.json();
-        setState({ phase: 'ready', topic });
+        const session: HandoffSession = await res.json();
+        setState({ phase: 'ready', session });
 
         try {
-          sessionStorage.setItem('bytelabs.handoff', JSON.stringify(topic));
+          sessionStorage.setItem('bytelabs.handoff', JSON.stringify(session));
         } catch { /* sessionStorage unavailable */ }
 
-        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- practice route not built yet
+        const { courseId, topicId } = session.exchange;
+        // eslint-disable-next-line @next/next/no-location-assign-relative-destination -- redirect after async exchange, not a static navigation
         window.location.assign(
-          `/practice/${encodeURIComponent(topic.courseId)}/${encodeURIComponent(topic.topicId)}`,
+          `/practical/${encodeURIComponent(courseId)}/${encodeURIComponent(topicId)}`,
         );
       } catch (err) {
         if (cancelled) return;
@@ -91,7 +92,7 @@ function HandoffContent() {
         <>
           <h1 className="text-lg font-medium">Ready!</h1>
           <p className="mt-2 text-sm text-[var(--color-text-muted)]">
-            Loading {state.topic.topicTitle}...
+            Loading {state.session.context.topic.title}...
           </p>
         </>
       )}

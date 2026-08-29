@@ -1,40 +1,35 @@
 import { type NextRequest, NextResponse } from 'next/server';
-import { requireAuth } from '@/lib/auth/verify';
 import { postVerdict } from '@/lib/kube/client';
-import type { Verdict } from '@/lib/kube/types';
+import type { VerdictPayload } from '@/lib/kube/types';
 
 export async function POST(req: NextRequest) {
-  const authResult = await requireAuth(req);
-  if (!authResult.ok) return authResult.response;
+  const bearerToken = (req.headers.get('authorization') || '').replace(/^Bearer /i, '');
+  if (!bearerToken) {
+    return NextResponse.json({ error: 'Missing authorization.' }, { status: 401 });
+  }
 
-  let body: Verdict;
+  let body: VerdictPayload;
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: 'Invalid JSON.' }, { status: 400 });
   }
 
-  if (!body.courseId || !body.topicId || !body.result) {
+  if (!body.course || !body.topic || !body.verdict) {
     return NextResponse.json(
-      { error: 'Missing required fields: courseId, topicId, result.' },
+      { error: 'Missing required fields: course, topic, verdict.' },
       { status: 400 },
     );
   }
 
-  if (!['solid', 'shaky', 'stuck'].includes(body.result)) {
+  if (!['solid', 'shaky', 'stuck'].includes(body.verdict)) {
     return NextResponse.json(
-      { error: 'result must be solid, shaky, or stuck.' },
+      { error: 'verdict must be solid, shaky, or stuck.' },
       { status: 400 },
     );
   }
 
-  // Forward the learner's Firebase token to Kube so Kube can verify identity
-  const token = (req.headers.get('authorization') || '').replace(/^Bearer /i, '');
-
-  const result = await postVerdict(
-    { ...body, uid: authResult.auth.uid, timestamp: new Date().toISOString() },
-    token,
-  );
+  const result = await postVerdict(body, bearerToken);
 
   if (!result.ok) {
     if (result.status === 0) {
@@ -46,5 +41,5 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
-  return NextResponse.json({ received: true });
+  return NextResponse.json(result.data);
 }
