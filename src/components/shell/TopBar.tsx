@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 import { useProgress } from '@/lib/storage/useProgress';
+import { useUser } from '@/lib/auth/useUser';
+import { SignOutButton } from '@/components/auth/AuthGate';
 
 /**
  * The persistent navigation.
@@ -23,6 +25,7 @@ const LINKS = [
 export function TopBar() {
   const pathname = usePathname();
   const progress = useProgress();
+  const authState = useUser();
 
   return (
     <header className="sticky top-0 z-40 border-b border-line bg-bg/85 backdrop-blur">
@@ -69,6 +72,7 @@ export function TopBar() {
           >
             Settings
           </Link>
+          {authState.status === 'signed-in' && <SignOutButton />}
         </div>
       </div>
     </header>
