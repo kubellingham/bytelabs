@@ -20,6 +20,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
     );
   }
 
+  if (authState.status === 'unconfigured') {
+    return <>{children}</>;
+  }
+
   if (authState.status === 'signed-out') {
     return <SignInForm />;
   }
@@ -40,10 +44,15 @@ function SignInForm() {
     setLoading(true);
 
     try {
+      const firebaseAuth = auth();
+      if (!firebaseAuth) {
+        setError('Firebase is not configured.');
+        return;
+      }
       if (mode === 'sign-in') {
-        await signInWithEmailAndPassword(auth(), email, password);
+        await signInWithEmailAndPassword(firebaseAuth, email, password);
       } else {
-        await createUserWithEmailAndPassword(auth(), email, password);
+        await createUserWithEmailAndPassword(firebaseAuth, email, password);
       }
     } catch (err) {
       setError(friendlyError(err));
@@ -127,7 +136,10 @@ function SignInForm() {
 export function SignOutButton() {
   return (
     <button
-      onClick={() => signOut(auth())}
+      onClick={() => {
+        const firebaseAuth = auth();
+        if (firebaseAuth) void signOut(firebaseAuth);
+      }}
       className="rounded-lg px-3 py-1.5 text-sm text-[var(--color-text-muted)] transition-colors hover:text-[var(--color-text)]"
     >
       Sign out

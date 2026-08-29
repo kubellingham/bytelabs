@@ -4,10 +4,11 @@ import { useCallback, useSyncExternalStore } from 'react';
 import { onAuthStateChanged, type User } from 'firebase/auth';
 import { auth } from '@/lib/firebase/client';
 
-type AuthState =
+export type AuthState =
   | { status: 'loading' }
   | { status: 'signed-out' }
-  | { status: 'signed-in'; user: User };
+  | { status: 'signed-in'; user: User }
+  | { status: 'unconfigured' };
 
 let currentState: AuthState = { status: 'loading' };
 const listeners = new Set<() => void>();
@@ -16,7 +17,12 @@ let unsubFirebase: (() => void) | null = null;
 function ensureSubscription() {
   if (unsubFirebase) return;
   if (typeof window === 'undefined') return;
-  unsubFirebase = onAuthStateChanged(auth(), (user) => {
+  const firebaseAuth = auth();
+  if (!firebaseAuth) {
+    currentState = { status: 'unconfigured' };
+    return;
+  }
+  unsubFirebase = onAuthStateChanged(firebaseAuth, (user) => {
     currentState = user
       ? { status: 'signed-in', user }
       : { status: 'signed-out' };
@@ -42,7 +48,9 @@ export function useUser(): AuthState {
 
 export async function getIdToken(): Promise<string | null> {
   if (typeof window === 'undefined') return null;
-  const user = auth().currentUser;
+  const firebaseAuth = auth();
+  if (!firebaseAuth) return null;
+  const user = firebaseAuth.currentUser;
   if (!user) return null;
   return user.getIdToken();
 }
