@@ -1,16 +1,9 @@
-import Anthropic from '@anthropic-ai/sdk';
+import { complete } from '@/lib/ai/complete';
+import { resolveModel, resolveProvider } from '@/lib/ai/provider';
 
 import { BRIEF_PARSE_SYSTEM, briefParseUser } from './prompt';
 import { briefTaskSchema, type BriefTask } from './types';
 import { extractJson } from './verdict';
-
-/**
- * The parse model. Opus 5 by default because the input shapes are wide open —
- * extracting tasks from a WhatsApp forward is harder than answering a question
- * about code already on screen. Overridable so a deployment can point at a
- * cheaper model when its input distribution is narrower.
- */
-const MODEL = process.env.BYTELABS_BRIEF_MODEL ?? 'claude-opus-5';
 
 const MAX_PASTE_CHARS = 60_000;
 
@@ -31,18 +24,6 @@ export type ParseResult =
   | { ok: false; failure: ParseFailure };
 
 export async function parseBrief(paste: string): Promise<ParseResult> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return {
-      ok: false,
-      failure: {
-        error: 'not-configured',
-        message:
-          'The brief parser needs ANTHROPIC_API_KEY set for this deployment.',
-      },
-    };
-  }
-
   const trimmed = paste.trim();
   if (!trimmed) {
     return {
@@ -60,29 +41,31 @@ export async function parseBrief(paste: string): Promise<ParseResult> {
     };
   }
 
-  const client = new Anthropic({ apiKey });
-  let raw = '';
-  try {
-    const message = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8000,
-      system: BRIEF_PARSE_SYSTEM,
-      messages: [{ role: 'user', content: briefParseUser(trimmed) }],
-    });
-    for (const block of message.content) {
-      if (block.type === 'text') raw += block.text;
+  const provider = resolveProvider();
+  const response = await complete({
+    system: BRIEF_PARSE_SYSTEM,
+    user: briefParseUser(trimmed),
+    model: resolveModel('brief', provider.provider),
+    maxTokens: 8000,
+  });
+
+  if (!response.ok) {
+    if (response.error === 'not-configured') {
+      return {
+        ok: false,
+        failure: {
+          error: 'not-configured',
+          message: response.message,
+        },
+      };
     }
-  } catch (error) {
     return {
       ok: false,
-      failure: {
-        error: 'model-failed',
-        message: error instanceof Error ? error.message : 'The parser could not be reached.',
-      },
+      failure: { error: 'model-failed', message: response.message },
     };
   }
 
-  const json = extractJson(raw);
+  const json = extractJson(response.text);
   if (!json) {
     return {
       ok: false,
