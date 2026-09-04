@@ -44,9 +44,13 @@ export function resolveModel(role: 'brief' | 'assist', provider: AiProvider): st
   if (override) return override;
 
   if (provider === 'openrouter') {
-    // OpenRouter uses vendor-scoped slugs. Sonnet is the safe default for both
-    // roles — fast enough for the parser, capable enough for the assistant.
-    return 'anthropic/claude-sonnet-4.5';
+    // OpenRouter uses vendor-scoped slugs.
+    //  - Brief parse: Haiku is roughly one-tenth Sonnet's price and handles
+    //    the JSON-extraction shape well; upgrade to Sonnet when input
+    //    distribution drifts wider than what Haiku can absorb.
+    //  - Assist: Sonnet, because it's answering about a learner's own
+    //    broken code and cost matters less than the answer landing.
+    return role === 'brief' ? 'anthropic/claude-haiku-4.5' : 'anthropic/claude-sonnet-4.5';
   }
   // Anthropic path keeps the existing defaults.
   return role === 'brief' ? 'claude-opus-5' : 'claude-opus-5';
