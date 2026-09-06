@@ -151,3 +151,26 @@ export function newSessionId(): string {
     .join('')
     .slice(0, 12);
 }
+
+/**
+ * Per-(session, task) on-ramp dismissal. When true, the on-ramp is collapsed
+ * on this device — the learner has said "I've got the shape" or "skip and
+ * code". Stays sticky across refreshes so it does not re-appear on every load.
+ */
+export function isOnRampDismissed(sessionId: string, taskId: string): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(`${KEY_PREFIX}${sessionId}.onramp.${taskId}`) === '1';
+  } catch {
+    return false;
+  }
+}
+
+export function dismissOnRamp(sessionId: string, taskId: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`${KEY_PREFIX}${sessionId}.onramp.${taskId}`, '1');
+  } catch {
+    /* ignore */
+  }
+}

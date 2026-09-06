@@ -6,10 +6,16 @@ import { useCallback, useState } from 'react';
 
 import { AssistPanel } from '@/components/assist/AssistPanel';
 import { Prose } from '@/components/course/Prose';
-import { loadWorkspace, saveWorkspace } from '@/lib/brief/storage';
+import {
+  dismissOnRamp,
+  isOnRampDismissed,
+  loadWorkspace,
+  saveWorkspace,
+} from '@/lib/brief/storage';
 import type { BriefSession, BriefTask } from '@/lib/brief/types';
 
 import { HtmlRoom } from './HtmlRoom';
+import { OnRamp } from './OnRamp';
 import { PythonRoom } from './PythonRoom';
 import { SelfMarkRoom } from './SelfMarkRoom';
 
@@ -52,6 +58,19 @@ interface TaskRoomProps {
 
 function TaskRoom({ session, index, task }: TaskRoomProps) {
   const router = useRouter();
+
+  const [onRampOpen, setOnRampOpen] = useState<boolean>(
+    () => task.concepts.length > 0 && !isOnRampDismissed(session.id, task.id),
+  );
+
+  const closeOnRamp = useCallback(() => {
+    dismissOnRamp(session.id, task.id);
+    setOnRampOpen(false);
+  }, [session.id, task.id]);
+
+  const reopenOnRamp = useCallback(() => {
+    setOnRampOpen(true);
+  }, []);
 
   const [files, setFiles] = useState<Record<string, string>>(() => {
     const saved = loadWorkspace(session.id, task.id);
@@ -96,47 +115,68 @@ function TaskRoom({ session, index, task }: TaskRoomProps) {
             {session.sourceLabel}
           </Link>
         </div>
-        <p className="text-xs text-subtle">
-          Task {index + 1} of {session.tasks.length}
-        </p>
+        <div className="flex shrink-0 items-center gap-4 text-xs">
+          {!onRampOpen && task.concepts.length > 0 ? (
+            <button
+              type="button"
+              onClick={reopenOnRamp}
+              className="rounded-lg border border-line px-3 py-1.5 text-muted transition-colors hover:text-ink"
+            >
+              On-ramp
+            </button>
+          ) : null}
+          <p className="text-subtle">
+            Task {index + 1} of {session.tasks.length}
+          </p>
+        </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="bl-scroll w-[clamp(21rem,32%,28rem)] shrink-0 overflow-y-auto border-e border-line">
-          <div className="px-7 py-9">
-            <p className="font-mono text-[11px] tracking-[0.18em] text-subtle uppercase">
-              {task.language}
-            </p>
-            <h1 className="mt-2 text-[length:var(--bl-step-2)] font-semibold text-ink">
-              {task.title}
-            </h1>
-            <div className="mt-6">
-              <Prose blocks={promptToProse(task.prompt)} />
+      {onRampOpen ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <OnRamp
+            taskTitle={task.title}
+            concepts={task.concepts}
+            onDismiss={closeOnRamp}
+          />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <aside className="bl-scroll w-[clamp(21rem,32%,28rem)] shrink-0 overflow-y-auto border-e border-line">
+            <div className="px-7 py-9">
+              <p className="font-mono text-[11px] tracking-[0.18em] text-subtle uppercase">
+                {task.language}
+              </p>
+              <h1 className="mt-2 text-[length:var(--bl-step-2)] font-semibold text-ink">
+                {task.title}
+              </h1>
+              <div className="mt-6">
+                <Prose blocks={promptToProse(task.prompt)} />
+              </div>
+
+              <nav aria-label="Task navigation" className="mt-8 flex gap-2">
+                {index > 0 ? (
+                  <Link
+                    href={`/brief/${session.id}/${index - 1}`}
+                    className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition-colors hover:text-ink"
+                  >
+                    ← Previous
+                  </Link>
+                ) : null}
+                {index + 1 < session.tasks.length ? (
+                  <Link
+                    href={`/brief/${session.id}/${index + 1}`}
+                    className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition-colors hover:text-ink"
+                  >
+                    Skip →
+                  </Link>
+                ) : null}
+              </nav>
             </div>
+          </aside>
 
-            <nav aria-label="Task navigation" className="mt-8 flex gap-2">
-              {index > 0 ? (
-                <Link
-                  href={`/brief/${session.id}/${index - 1}`}
-                  className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition-colors hover:text-ink"
-                >
-                  ← Previous
-                </Link>
-              ) : null}
-              {index + 1 < session.tasks.length ? (
-                <Link
-                  href={`/brief/${session.id}/${index + 1}`}
-                  className="rounded-lg border border-line px-4 py-2 text-sm text-muted transition-colors hover:text-ink"
-                >
-                  Skip →
-                </Link>
-              ) : null}
-            </nav>
-          </div>
-        </aside>
-
-        {renderRuntime({ task, files, onFilesChange, onPass })}
-      </div>
+          {renderRuntime({ task, files, onFilesChange, onPass })}
+        </div>
+      )}
 
       <AssistPanel
         context={{

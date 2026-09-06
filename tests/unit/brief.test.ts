@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 
+import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
 import { briefSessionSchema, briefTaskSchema, type BriefTask } from '@/lib/brief/types';
 import { extractJson, resolvePythonVerdict } from '@/lib/brief/verdict';
 
@@ -22,6 +23,18 @@ describe('brief schema', () => {
     });
     expect(task.expected).toEqual({ kind: 'self-mark' });
     expect(task.starterFiles).toEqual({});
+    expect(task.concepts).toEqual([]);
+  });
+
+  it('preserves concept order when the parser supplies it', () => {
+    const task = briefTaskSchema.parse({
+      id: 't10',
+      title: 'Prime check',
+      prompt: 'Print whether a number is prime.',
+      language: 'python',
+      concepts: ['input', 'for-loop', 'modulo', 'break'],
+    });
+    expect(task.concepts).toEqual(['input', 'for-loop', 'modulo', 'break']);
   });
 
   it('rejects a session without at least one task', () => {
@@ -32,6 +45,47 @@ describe('brief schema', () => {
       tasks: [],
     });
     expect(bad.success).toBe(false);
+  });
+});
+
+describe('concept library', () => {
+  it('returns a fully-shaped explainer for known slugs', () => {
+    const forLoop = getConcept('for-loop');
+    expect(forLoop).not.toBeNull();
+    expect(forLoop?.title).toMatch(/for loop/i);
+    expect(forLoop?.snippet.length).toBeGreaterThan(0);
+    expect(forLoop?.language).toBe('python');
+  });
+
+  it('returns null for unknown slugs', () => {
+    expect(getConcept('prime-check')).toBeNull();
+    expect(getConcept('')).toBeNull();
+    expect(getConcept('not-a-real-concept')).toBeNull();
+  });
+
+  it('holds at least the beginner-Python vocabulary the on-ramp expects', () => {
+    for (const slug of [
+      'input',
+      'print',
+      'for-loop',
+      'if-statement',
+      'break',
+      'modulo',
+      'list-basics',
+      'list-methods',
+      'function-def',
+      'return',
+    ]) {
+      expect(getConcept(slug), `missing library entry: ${slug}`).not.toBeNull();
+    }
+    expect(conceptCount()).toBeGreaterThanOrEqual(10);
+  });
+
+  it('humanises unknown slugs into title-case display strings', () => {
+    expect(humaniseSlug('prime-check')).toBe('Prime check');
+    expect(humaniseSlug('matplotlib_bar')).toBe('Matplotlib bar');
+    expect(humaniseSlug('csv')).toBe('Csv');
+    expect(humaniseSlug('')).toBe('');
   });
 });
 

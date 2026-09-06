@@ -41,6 +41,14 @@ export const briefTaskSchema = z.object({
   prompt: z.string().min(1),
   language: briefLanguageSchema,
   /**
+   * The concepts a learner exercises to solve this task, in the order they
+   * matter. Slugs match ids in the hand-authored concept library where one
+   * exists; slugs not in the library are shown as placeholder cards in the
+   * on-ramp so the learner at least sees what the task expects them to know.
+   * Empty when the parser could not identify any concepts.
+   */
+  concepts: z.array(z.string().min(1)).default([]),
+  /**
    * File contents the learner starts with — a data variable, a class stub,
    * whatever the paste supplied inline. Empty when the ask is "write from scratch".
    */

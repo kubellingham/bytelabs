@@ -38,6 +38,7 @@ Output strict JSON with this shape and nothing else:
       "title": "<2 to 8 words, in the learner's language>",
       "prompt": "<one or two short paragraphs restating the ask concretely. Include any specific input data (like 'scores = [45, 88, 72]') inline in the prompt if it belongs in the ask rather than the starter file.>",
       "language": "python" | "html" | "css" | "javascript" | "other",
+      "concepts": ["<slug>", "<slug>", ...],
       "starterFiles": { "<path>": "<contents>" },
       "expected": { "kind": "stdout-equals" | "stdout-contains" | "html-contains" | "self-mark", "value": "<string, omitted when kind is self-mark>" }
     }
@@ -45,6 +46,60 @@ Output strict JSON with this shape and nothing else:
 }
 
 Task ids must be "t01", "t02", … in the order tasks appear.
+
+concepts: the small set of coding ideas a learner has to know to solve THIS task, in the order they matter. Prefer slugs from the vocabulary below when they fit; use short ad-hoc kebab-case slugs when a needed idea is not in the vocabulary. Aim for 2–6 concepts per task — enough to describe the shape of the work, not so many that the list is noise.
+
+Python vocabulary:
+  input           reading a value from the user with input()
+  print           writing output with print()
+  for-loop        iterating over a sequence with for/in
+  while-loop      looping while a condition holds
+  if-statement    conditional branching with if/elif/else
+  break           exiting a loop early
+  continue        skipping to the next loop iteration
+  modulo          the % operator, remainders, divisibility
+  arithmetic      +, -, *, /, //, ** and precedence
+  list-basics     creating a list, indexing, slicing
+  list-methods    .append/.remove/.pop/.count/.sort/.reverse
+  tuple-basics    creating and unpacking tuples
+  set-basics      creating sets, intersection, union, difference
+  dict-basics     creating a dict, key access, .items/.keys/.values
+  string-methods  .upper/.lower/.replace/.split/.strip/.count
+  string-format   f-strings and .format
+  function-def    defining a function with def and parameters
+  return          returning a value from a function
+  default-args    default parameter values
+  keyword-args    calling with name=value
+  lambda          anonymous functions with lambda
+  map-filter      applying map() / filter() to a sequence
+  file-io         open(), read(), write(), file modes
+  try-except      catching exceptions
+  raise           raising an exception
+  class-def       defining a class with __init__ and methods
+  inheritance     subclassing, method override
+  polymorphism    same method name on different classes
+  module-import   import, from ... import, aliasing
+  regex           re.match, re.search, re.sub, character classes
+
+HTML / CSS / JS vocabulary:
+  html-semantics  choosing article, section, nav, aside, main, header, footer
+  html-forms      form elements, labels, inputs, buttons
+  html-media      img with alt, audio, video
+  html-links      a with href, download, target
+  css-selectors   element, class, id, descendant, pseudo
+  css-boxmodel    margin, padding, border, box-sizing
+  css-flex        display: flex, direction, gap, alignment
+  css-grid        display: grid, template, gap
+  css-typography  font family, size, weight, line-height
+  css-color       color, background, contrast
+  js-variables    let, const, block scope
+  js-functions    function declarations, arrows
+  js-conditions   if/else, ternary
+  js-arrays       array literals, .map/.filter/.reduce/.forEach
+  js-objects      object literals, destructuring, spread
+  js-dom          document.querySelector, event listeners
+
+If a task uses an idea not in these lists (a specific algorithm shape, a library, whatever), emit a short kebab-case slug that names it plainly: "prime-check", "palindrome", "matplotlib-bar", "csv-parsing", etc. Do not invent grandiose names — plain and short.
 
 Language: infer from context. A syllabus that says "Python Laboratory" means every task is Python unless a task obviously isn't. When you cannot tell, use "other".
 
