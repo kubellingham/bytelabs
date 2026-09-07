@@ -4,6 +4,8 @@ import { useMemo, useState } from 'react';
 
 import { getConcept, humaniseSlug, type ConceptExplainer } from '@/lib/brief/concepts';
 
+import { ConceptMiniLesson } from './ConceptMiniLesson';
+
 interface Props {
   taskTitle: string;
   concepts: string[];
@@ -128,7 +130,19 @@ export function OnRamp({ taskTitle, concepts, onDismiss }: Props) {
         {card.title}
       </h1>
 
-      {card.explainer ? (
+      {card.explainer?.miniLesson ? (
+        <ConceptMiniLesson
+          key={`${phase.index}-${card.slug}`}
+          mini={card.explainer.miniLesson}
+          onComplete={() => {
+            if (isLast) {
+              onDismiss();
+            } else {
+              setPhase({ kind: 'slide', index: phase.index + 1 });
+            }
+          }}
+        />
+      ) : card.explainer ? (
         <>
           <p className="mt-6 max-w-2xl text-lg leading-relaxed text-ink">
             {card.explainer.blurb}
@@ -169,32 +183,46 @@ export function OnRamp({ taskTitle, concepts, onDismiss }: Props) {
         </div>
       )}
 
-      <div className="mt-12 flex flex-wrap items-center gap-3">
-        {isLast ? (
+      {/* The mini-lesson drives its own progression, so we only render the
+          concept-level navigation for the static shape. */}
+      {card.explainer?.miniLesson ? (
+        <div className="mt-10 flex flex-wrap items-center gap-3">
           <button
             type="button"
             onClick={onDismiss}
-            className="rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            className="rounded-lg border border-line px-5 py-3 text-base text-muted transition-colors hover:text-ink"
           >
-            I’ve got the shape — let me code
+            Skip and code
           </button>
-        ) : (
+        </div>
+      ) : (
+        <div className="mt-12 flex flex-wrap items-center gap-3">
+          {isLast ? (
+            <button
+              type="button"
+              onClick={onDismiss}
+              className="rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            >
+              I’ve got the shape — let me code
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setPhase({ kind: 'slide', index: phase.index + 1 })}
+              className="rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            >
+              Next concept →
+            </button>
+          )}
           <button
             type="button"
-            onClick={() => setPhase({ kind: 'slide', index: phase.index + 1 })}
-            className="rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
+            onClick={onDismiss}
+            className="rounded-lg border border-line px-5 py-3 text-base text-muted transition-colors hover:text-ink"
           >
-            Next concept →
+            Skip and code
           </button>
-        )}
-        <button
-          type="button"
-          onClick={onDismiss}
-          className="rounded-lg border border-line px-5 py-3 text-base text-muted transition-colors hover:text-ink"
-        >
-          Skip and code
-        </button>
-      </div>
+        </div>
+      )}
     </div>
   );
 }

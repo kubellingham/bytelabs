@@ -17,6 +17,47 @@
 
 export type ConceptLanguage = 'python' | 'html' | 'css' | 'javascript';
 
+/**
+ * A `teach` step is a short paragraph of prose. The learner reads it and
+ * clicks Continue. Two or three sentences maximum — anything longer belongs
+ * to Kube, not to ByteLabs' on-ramp.
+ */
+export interface TeachStep {
+  kind: 'teach';
+  body: string;
+}
+
+/**
+ * A `type` step is copy-and-type: the learner reads the instruction, sees
+ * the target code as a callout, types it into a mini editor, clicks Run,
+ * and only advances once their output matches `expected`. This is where
+ * the on-ramp stops being a slide deck and becomes hands-on.
+ */
+export interface TypeStep {
+  kind: 'type';
+  /** One line above the target. "Try typing this and hit Run." */
+  instruction: string;
+  /** The exact code the learner is copying. Displayed verbatim as a hint. */
+  code: string;
+  /**
+   * The stdout the learner's code should produce for this step to pass.
+   * Compared after trimming both sides. Keep it short and deterministic.
+   */
+  expected: string;
+}
+
+export type ConceptStep = TeachStep | TypeStep;
+
+/**
+ * The interactive mini-tutorial for a concept — the "learn by doing" shape.
+ * When present on a concept, the on-ramp renders this instead of the static
+ * blurb + snippet. Kept as an optional field so authored concepts can adopt
+ * it one at a time.
+ */
+export interface MiniLesson {
+  steps: ConceptStep[];
+}
+
 export interface ConceptExplainer {
   id: string;
   title: string;
@@ -27,6 +68,12 @@ export interface ConceptExplainer {
   snippet: string;
   /** What running the snippet prints. Omit when the snippet does not print. */
   snippetOutput?: string;
+  /**
+   * Optional interactive walkthrough. When present, the on-ramp renders this
+   * teach → do → teach → do sequence instead of the static blurb + snippet
+   * display. Authored per-concept as the library shifts to hands-on.
+   */
+  miniLesson?: MiniLesson;
 }
 
 const PYTHON: Record<string, ConceptExplainer> = {
@@ -48,6 +95,48 @@ const PYTHON: Record<string, ConceptExplainer> = {
     snippet:
       'name = "Ada"\nage = 36\n\nprint("Hello,", name)\nprint(f"{name} is {age} years old.")',
     snippetOutput: 'Hello, Ada\nAda is 36 years old.',
+    miniLesson: {
+      steps: [
+        {
+          kind: 'teach',
+          body:
+            'print() is how you make your program say something. Whatever you put inside the parentheses is what shows on the screen.',
+        },
+        {
+          kind: 'type',
+          instruction: 'Try it — type this into the editor below and hit Run.',
+          code: 'print("Hello")',
+          expected: 'Hello',
+        },
+        {
+          kind: 'teach',
+          body:
+            'That "Hello" is a string — text between quotes. print() sent it to the screen exactly as you wrote it.',
+        },
+        {
+          kind: 'type',
+          instruction:
+            'You can pass more than one thing, separated by commas. Python joins them with a space.',
+          code: 'print("Hello,", "World")',
+          expected: 'Hello, World',
+        },
+        {
+          kind: 'teach',
+          body: 'Numbers work too — no quotes needed for those.',
+        },
+        {
+          kind: 'type',
+          instruction: 'Print the answer to a small maths question.',
+          code: 'print(1 + 1)',
+          expected: '2',
+        },
+        {
+          kind: 'teach',
+          body:
+            'That is print(). Any time you want to know what your program is doing, drop a print() in and it will tell you.',
+        },
+      ],
+    },
   },
   'for-loop': {
     id: 'for-loop',
