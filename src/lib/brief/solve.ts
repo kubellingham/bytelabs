@@ -77,7 +77,66 @@ export async function solveTask(task: BriefTask): Promise<SolveResult> {
     };
   }
 
-  return { ok: true, data: { solution, beats } };
+  const blanks = filterValidBlanks(
+    solution,
+    Array.isArray(json.blanks) ? json.blanks.filter((b): b is string => typeof b === 'string') : [],
+  );
+
+  const expectedOutput =
+    typeof json.expectedOutput === 'string' ? json.expectedOutput : undefined;
+
+  return {
+    ok: true,
+    data: {
+      solution,
+      beats,
+      blanks,
+      ...(expectedOutput !== undefined ? { expectedOutput } : {}),
+    },
+  };
+}
+
+/**
+ * Keep only blanks that (a) appear in the solution, (b) are within a sane
+ * length band, and (c) do not overlap with any earlier accepted blank. Order
+ * of the input array is preserved so the AI can express preference.
+ */
+export function filterValidBlanks(solution: string, candidates: readonly string[]): string[] {
+  const kept: string[] = [];
+  const occupied: Array<[number, number]> = [];
+  for (const raw of candidates) {
+    const text = raw.trim();
+    if (!text || text.length > 50) continue;
+    // Reject a blank that is a strict substring of an already-kept blank, or
+    // that contains one. Both would let the learner "solve" one blank by
+    // filling the other, and mangle the template.
+    if (kept.some((prev) => prev.includes(text) || text.includes(prev))) continue;
+    const idx = solution.indexOf(text);
+    if (idx < 0) continue;
+    const end = idx + text.length;
+    if (occupied.some(([a, b]) => idx < b && end > a)) continue;
+    kept.push(text);
+    occupied.push([idx, end]);
+    if (kept.length >= 5) break;
+  }
+  return kept;
+}
+
+/**
+ * The template shown to the learner in the rewrite phase: the solution with
+ * each blank replaced by a placeholder of the same shape as `___`. Non-blank
+ * text is preserved verbatim so the surrounding structure guides the learner.
+ */
+export function makeRewriteTemplate(solution: string, blanks: readonly string[]): string {
+  let out = solution;
+  for (const blank of blanks) {
+    // Replace only the first occurrence per blank — filterValidBlanks already
+    // ensured no overlap, so first-match is unambiguous.
+    const idx = out.indexOf(blank);
+    if (idx < 0) continue;
+    out = out.slice(0, idx) + '____' + out.slice(idx + blank.length);
+  }
+  return out;
 }
 
 /**

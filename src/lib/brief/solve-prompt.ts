@@ -28,7 +28,12 @@ Output strict JSON with this shape and nothing else:
       "note": "<one or two short sentences, conversational, explaining what the highlighted chunk is doing and why it is there>",
       "occurrence": 1
     }
-  ]
+  ],
+  "blanks": [
+    "<short verbatim substring of the solution, will be blanked out for the learner to type back>",
+    "..."
+  ],
+  "expectedOutput": "<what the solution prints for a representative input, used to grade the rewrite>"
 }
 
 Rules for the SOLUTION:
@@ -46,6 +51,19 @@ Rules for the BEATS:
 - The FIRST beat introduces what the whole solution is doing at a glance. The LAST beat closes with what the output looks like or how we know it worked.
 - Ideal beat notes talk to the learner ("we read the number here", "notice we stop the moment we find one factor") rather than describing the code passively.
 - Set "occurrence" to 2, 3, … only when the same substring genuinely appears multiple times and you mean the later one. Otherwise leave it as 1 (or omit it).
+
+Rules for the BLANKS:
+- 2 to 5 short substrings of the solution that will be BLANKED OUT (replaced with a placeholder) for the learner to type back.
+- Each blank must appear verbatim in the solution.
+- No blank may be a substring of another blank, and no two blanks may overlap in the solution. (If "range(2, n)" and "n" would both be blanks, keep only one.)
+- Each blank is 1-15 characters. Short enough not to overwhelm, long enough to matter.
+- Pick blanks that are the MEANINGFUL DECISIONS of the solution — a range bound (\`range(2, n)\`), a comparison (\`n % i == 0\`), the \`break\`, a critical variable name, an operator. Not filler like \`print(\` or \`:\`.
+- Together the blanks are the "spine" — filling them all proves the learner understood the shape.
+
+Rules for expectedOutput:
+- What the solution prints for a plausible representative input. For programs that read input via input(), pick a reasonable value (e.g. 7 for a prime check) and give the output for that value.
+- Newline-terminated lines exactly as print() would produce them.
+- No commentary; just the raw output text.
 
 Return the JSON object only. No prose outside the JSON. No code fences.`;
 

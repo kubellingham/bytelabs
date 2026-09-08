@@ -5,13 +5,18 @@ import { useCallback, useMemo, useState } from 'react';
 import { hasNthOccurrence } from '@/lib/brief/solve';
 import type { SolveBeat, SolveResponse } from '@/lib/brief/solve-types';
 
+import { SolveRewrite } from './SolveRewrite';
+
 interface Props {
   taskTitle: string;
   solve: SolveResponse;
   onClose: () => void;
 }
 
-type Phase = { kind: 'see' } | { kind: 'beat'; index: number };
+type Phase =
+  | { kind: 'see' }
+  | { kind: 'beat'; index: number }
+  | { kind: 'rewrite' };
 
 /**
  * The SEE + BREAKDOWN walkthrough.
@@ -32,17 +37,38 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
   const currentIndex = phase.kind === 'beat' ? phase.index : -1;
   const isLastBeat = currentIndex === totalBeats - 1;
 
+  // A rewrite phase only makes sense when the solve response gave us blanks
+  // AND an expected output to grade against. Otherwise the last beat just
+  // closes the walkthrough (as before).
+  const canRewrite = solve.blanks.length > 0 && !!solve.expectedOutput?.trim();
+
   const advance = useCallback(() => {
     if (phase.kind === 'see') {
       setPhase({ kind: 'beat', index: 0 });
       return;
     }
-    if (isLastBeat) {
-      onClose();
+    if (phase.kind === 'beat') {
+      if (isLastBeat) {
+        if (canRewrite) {
+          setPhase({ kind: 'rewrite' });
+        } else {
+          onClose();
+        }
+        return;
+      }
+      setPhase({ kind: 'beat', index: phase.index + 1 });
       return;
     }
-    setPhase({ kind: 'beat', index: phase.index + 1 });
-  }, [phase, isLastBeat, onClose]);
+    // In the rewrite phase, advance = done.
+    onClose();
+  }, [phase, isLastBeat, canRewrite, onClose]);
+
+  const phaseLabel =
+    phase.kind === 'see'
+      ? 'Read the solution'
+      : phase.kind === 'beat'
+        ? `Beat ${currentIndex + 1} of ${totalBeats}`
+        : 'Now you type it';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg/95 backdrop-blur">
@@ -55,9 +81,7 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
           <span className="truncate text-subtle">{taskTitle}</span>
         </div>
         <div className="flex items-center gap-4">
-          <p className="text-xs text-subtle">
-            {phase.kind === 'see' ? 'Read the solution' : `Beat ${currentIndex + 1} of ${totalBeats}`}
-          </p>
+          <p className="text-xs text-subtle">{phaseLabel}</p>
           <button
             type="button"
             onClick={onClose}
@@ -68,31 +92,42 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
         </div>
       </header>
 
-      <div className="flex min-h-0 flex-1">
-        <aside className="bl-scroll w-[clamp(21rem,32%,28rem)] shrink-0 overflow-y-auto border-e border-line">
-          <div className="px-7 py-9">
-            {phase.kind === 'see' ? (
-              <SeePanel taskTitle={taskTitle} totalBeats={totalBeats} onStart={advance} />
-            ) : (
-              <BeatPanel
-                index={currentIndex}
-                totalBeats={totalBeats}
-                beat={highlight!}
-                isLast={isLastBeat}
-                onBack={() => setPhase({ kind: 'see' })}
-                onAdvance={advance}
-              />
-            )}
-          </div>
-        </aside>
+      {phase.kind === 'rewrite' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SolveRewrite
+            solve={solve}
+            onDone={onClose}
+            onBack={() => setPhase({ kind: 'beat', index: totalBeats - 1 })}
+          />
+        </div>
+      ) : (
+        <div className="flex min-h-0 flex-1">
+          <aside className="bl-scroll w-[clamp(21rem,32%,28rem)] shrink-0 overflow-y-auto border-e border-line">
+            <div className="px-7 py-9">
+              {phase.kind === 'see' ? (
+                <SeePanel taskTitle={taskTitle} totalBeats={totalBeats} onStart={advance} />
+              ) : (
+                <BeatPanel
+                  index={currentIndex}
+                  totalBeats={totalBeats}
+                  beat={highlight!}
+                  isLast={isLastBeat}
+                  isLastLeadsToRewrite={canRewrite}
+                  onBack={() => setPhase({ kind: 'see' })}
+                  onAdvance={advance}
+                />
+              )}
+            </div>
+          </aside>
 
-        <section
-          aria-label="Solution"
-          className="flex min-h-0 flex-1 flex-col p-6"
-        >
-          <CodeCanvas source={solve.solution} highlight={highlight} />
-        </section>
-      </div>
+          <section
+            aria-label="Solution"
+            className="flex min-h-0 flex-1 flex-col p-6"
+          >
+            <CodeCanvas source={solve.solution} highlight={highlight} />
+          </section>
+        </div>
+      )}
     </div>
   );
 }
@@ -134,6 +169,7 @@ function BeatPanel({
   totalBeats,
   beat,
   isLast,
+  isLastLeadsToRewrite,
   onBack,
   onAdvance,
 }: {
@@ -141,6 +177,7 @@ function BeatPanel({
   totalBeats: number;
   beat: SolveBeat;
   isLast: boolean;
+  isLastLeadsToRewrite: boolean;
   onBack: () => void;
   onAdvance: () => void;
 }) {
@@ -175,7 +212,11 @@ function BeatPanel({
         onClick={onAdvance}
         className="mt-8 rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
       >
-        {isLast ? 'Close walkthrough →' : 'Continue →'}
+        {isLast
+          ? isLastLeadsToRewrite
+            ? 'Try it yourself →'
+            : 'Close walkthrough →'
+          : 'Continue →'}
       </button>
     </>
   );

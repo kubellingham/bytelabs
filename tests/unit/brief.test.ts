@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
-import { hasNthOccurrence } from '@/lib/brief/solve';
+import { filterValidBlanks, hasNthOccurrence, makeRewriteTemplate } from '@/lib/brief/solve';
 import { solveResponseSchema } from '@/lib/brief/solve-types';
 import { briefSessionSchema, briefTaskSchema, type BriefTask } from '@/lib/brief/types';
 import { extractJson, resolvePythonVerdict } from '@/lib/brief/verdict';
@@ -182,6 +182,49 @@ describe('solve — hasNthOccurrence', () => {
     expect(hasNthOccurrence(doubled, 'break', 1)).toBe(true);
     expect(hasNthOccurrence(doubled, 'break', 2)).toBe(true);
     expect(hasNthOccurrence(doubled, 'break', 3)).toBe(false);
+  });
+});
+
+describe('solve — filterValidBlanks', () => {
+  const solution = 'for i in range(2, n):\n    if n % i == 0:\n        break';
+
+  it('keeps blanks whose text is present in the solution', () => {
+    expect(filterValidBlanks(solution, ['range(2, n)', 'n % i == 0', 'break'])).toEqual([
+      'range(2, n)',
+      'n % i == 0',
+      'break',
+    ]);
+  });
+
+  it('drops blanks whose text is not in the solution', () => {
+    expect(filterValidBlanks(solution, ['while True:', 'break'])).toEqual(['break']);
+  });
+
+  it('drops blanks that overlap with an earlier accepted blank', () => {
+    // "range" is a substring of "range(2, n)" — reject the later one.
+    expect(filterValidBlanks(solution, ['range(2, n)', 'range'])).toEqual(['range(2, n)']);
+  });
+
+  it('caps the number of blanks at 5', () => {
+    const big = 'a b c d e f g h';
+    expect(filterValidBlanks(big, ['a', 'b', 'c', 'd', 'e', 'f', 'g'])).toHaveLength(5);
+  });
+
+  it('drops empty or over-long blanks', () => {
+    expect(filterValidBlanks(solution, ['', 'x'.repeat(60), 'break'])).toEqual(['break']);
+  });
+});
+
+describe('solve — makeRewriteTemplate', () => {
+  it('replaces each blank with a placeholder', () => {
+    const solution = 'for i in range(2, n):\n    break';
+    expect(makeRewriteTemplate(solution, ['range(2, n)', 'break'])).toBe(
+      'for i in ____:\n    ____',
+    );
+  });
+
+  it('returns the source verbatim when there are no blanks', () => {
+    expect(makeRewriteTemplate('print("hi")', [])).toBe('print("hi")');
   });
 });
 

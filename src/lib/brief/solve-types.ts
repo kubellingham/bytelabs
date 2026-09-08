@@ -36,9 +36,27 @@ export const solveBeatSchema = z.object({
 });
 export type SolveBeat = z.infer<typeof solveBeatSchema>;
 
+/**
+ * The blanks the learner fills in during the REWRITE phase. Each is a short,
+ * meaningful substring of the solution — a range bound, an operator, a
+ * variable name — that gets replaced with a placeholder in the template the
+ * learner sees, and that they type back to prove they understood the shape.
+ *
+ * The parser drops blanks whose text is not in the solution, and drops
+ * blanks that overlap with any earlier blank (so `range` and `range(2, n)`
+ * cannot both be blanks in the same rewrite).
+ */
 export const solveResponseSchema = z.object({
   solution: z.string().min(1),
   beats: z.array(solveBeatSchema).min(1),
+  /** 2-5 non-overlapping substrings the learner types back in the rewrite. */
+  blanks: z.array(z.string().min(1).max(50)).default([]),
+  /**
+   * What the reference solution prints. Used as the pass target for the
+   * rewrite: the learner's stdout must equal this after trimming. Absent
+   * when the task's own `expected` (from parse) already carries the truth.
+   */
+  expectedOutput: z.string().optional(),
 });
 export type SolveResponse = z.infer<typeof solveResponseSchema>;
 export type SolveResponseInput = z.input<typeof solveResponseSchema>;
