@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
+import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
 import {
   filterValidBlanks,
   hasNthOccurrence,
@@ -255,6 +256,60 @@ describe('solve — makeGhostForRound', () => {
 
   it('is a no-op in round 2 when there are no blanks', () => {
     expect(makeGhostForRound(solution, [], 2)).toBe(solution);
+  });
+});
+
+describe('editor-keys — applyCodeEditorKey', () => {
+  const key = (opts: Partial<{ key: string; shiftKey: boolean; ctrlKey: boolean; metaKey: boolean }>) => ({
+    key: 'a',
+    shiftKey: false,
+    ctrlKey: false,
+    metaKey: false,
+    ...opts,
+  });
+
+  it('Tab inserts four spaces at the cursor', () => {
+    const result = applyCodeEditorKey(key({ key: 'Tab' }), 'foo', 3, 3);
+    expect(result).toEqual({ next: 'foo    ', cursor: 7 });
+  });
+
+  it('Tab replaces the current selection with four spaces', () => {
+    const result = applyCodeEditorKey(key({ key: 'Tab' }), 'foo bar', 4, 7);
+    expect(result).toEqual({ next: 'foo     ', cursor: 8 });
+  });
+
+  it('Enter preserves the current line indentation', () => {
+    // cursor after "    x"
+    const source = '    x';
+    const result = applyCodeEditorKey(key({ key: 'Enter' }), source, 5, 5);
+    expect(result).toEqual({ next: '    x\n    ', cursor: 10 });
+  });
+
+  it('Enter after a `:` adds four extra spaces', () => {
+    const source = 'if n < 2:';
+    const result = applyCodeEditorKey(key({ key: 'Enter' }), source, 9, 9);
+    expect(result).toEqual({ next: 'if n < 2:\n    ', cursor: 14 });
+  });
+
+  it('Enter after nested `:` compounds indentation (previous indent + 4)', () => {
+    const source = '    for i in range(2, n):';
+    const result = applyCodeEditorKey(key({ key: 'Enter' }), source, source.length, source.length);
+    // 4 leading + 4 extra = 8 spaces
+    expect(result?.next.endsWith('\n        ')).toBe(true);
+    expect(result?.cursor).toBe(source.length + 1 + 8);
+  });
+
+  it('leaves plain character keys alone', () => {
+    expect(applyCodeEditorKey(key({ key: 'a' }), 'foo', 3, 3)).toBeNull();
+  });
+
+  it('never handles Ctrl/Meta chords — they belong to the caller', () => {
+    expect(applyCodeEditorKey(key({ key: 'Enter', ctrlKey: true }), 'foo', 3, 3)).toBeNull();
+    expect(applyCodeEditorKey(key({ key: 'Tab', metaKey: true }), 'foo', 3, 3)).toBeNull();
+  });
+
+  it('Shift+Tab is not handled (leaves default focus behaviour)', () => {
+    expect(applyCodeEditorKey(key({ key: 'Tab', shiftKey: true }), 'foo', 3, 3)).toBeNull();
   });
 });
 

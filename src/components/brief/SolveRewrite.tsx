@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
+import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
 import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
 import { makeGhostForRound } from '@/lib/brief/solve';
 import type { SolveResponse } from '@/lib/brief/solve-types';
@@ -89,9 +90,26 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
         event.preventDefault();
         void onRun();
+        return;
+      }
+      const el = event.currentTarget;
+      const applied = applyCodeEditorKey(
+        event,
+        source,
+        el.selectionStart,
+        el.selectionEnd,
+      );
+      if (applied) {
+        event.preventDefault();
+        setSource(applied.next);
+        requestAnimationFrame(() => {
+          if (editorRef.current) {
+            editorRef.current.selectionStart = editorRef.current.selectionEnd = applied.cursor;
+          }
+        });
       }
     },
-    [onRun],
+    [onRun, source],
   );
 
   const roundLabel = round === 1 ? 'Round 1 · Trace' : 'Round 2 · Recall';
