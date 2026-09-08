@@ -66,6 +66,7 @@ export function loadPyodideOnce(): Promise<PyodideInstance> {
   return cached;
 }
 
+import { formatPythonError } from './python-errors';
 import type { PythonRunResult } from './verdict';
 export type { PythonRunResult } from './verdict';
 
@@ -88,7 +89,8 @@ export async function runPython(code: string): Promise<PythonRunResult> {
   try {
     await pyodide.runPythonAsync(code);
   } catch (err) {
-    error = err instanceof Error ? err.message : String(err);
+    const raw = err instanceof Error ? err.message : String(err);
+    error = formatPythonError(raw);
   }
   const durationMs = performance.now() - started;
   return { stdout: stdout.join(''), stderr: stderr.join(''), error, durationMs };

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { formatPythonError } from '@/lib/brief/python-errors';
 import {
   filterValidBlanks,
   hasNthOccurrence,
@@ -256,6 +257,63 @@ describe('solve — makeGhostForRound', () => {
 
   it('is a no-op in round 2 when there are no blanks', () => {
     expect(makeGhostForRound(solution, [], 2)).toBe(solution);
+  });
+});
+
+describe('python-errors — formatPythonError', () => {
+  it('strips Pyodide internal frames and renames <exec> to main.py', () => {
+    // The exact trace the learner reported, verbatim.
+    const raw = `Traceback (most recent call last):
+  File "/lib/python313.zip/_pyodide/_base.py", line 597, in eval_code_async
+    await CodeRunner(
+          ~~~~~~~~~~^
+        source,
+        ^^^^^^^
+    ...<5 lines>...
+        optimize=optimize,
+        ^^^^^^^^^^^^^^^^^^
+    )
+    ^
+  File "/lib/python313.zip/_pyodide/_base.py", line 285, in __init__
+    self.ast = next(self._gen)
+               ~~~~^^^^^^^^^^^
+  File "/lib/python313.zip/_pyodide/_base.py", line 149, in _parse_and_compile_gen
+    mod = compile(source, filename, mode, flags | ast.PyCF_ONLY_AST)
+  File "<exec>", line 2
+    is-print = True
+    ^^
+SyntaxError: invalid syntax`;
+
+    const formatted = formatPythonError(raw);
+
+    // The internal frames are gone.
+    expect(formatted).not.toContain('_pyodide');
+    expect(formatted).not.toContain('eval_code_async');
+    expect(formatted).not.toContain('_parse_and_compile_gen');
+    expect(formatted).not.toContain('<exec>');
+
+    // The learner-relevant parts survive.
+    expect(formatted).toContain('main.py');
+    expect(formatted).toContain('line 2');
+    expect(formatted).toContain('is-print = True');
+    expect(formatted).toContain('SyntaxError: invalid syntax');
+    // The Traceback header stays because one frame remains under it.
+    expect(formatted.startsWith('Traceback')).toBe(true);
+  });
+
+  it('drops a "Traceback:" header that has no frames left under it', () => {
+    const raw = `Traceback (most recent call last):
+  File "/lib/python313.zip/_pyodide/_base.py", line 597, in eval_code_async
+    await CodeRunner(...)
+NameError: name 'x' is not defined`;
+    const formatted = formatPythonError(raw);
+    expect(formatted.startsWith('Traceback')).toBe(false);
+    expect(formatted).toContain('NameError');
+  });
+
+  it('leaves a message with no traceback untouched', () => {
+    expect(formatPythonError('KeyboardInterrupt')).toBe('KeyboardInterrupt');
+    expect(formatPythonError('')).toBe('');
   });
 });
 
