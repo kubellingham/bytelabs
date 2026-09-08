@@ -6,10 +6,13 @@ import { useCallback, useState } from 'react';
 
 import { AssistPanel } from '@/components/assist/AssistPanel';
 import { Prose } from '@/components/course/Prose';
+import { solveResponseSchema, type SolveResponse } from '@/lib/brief/solve-types';
 import {
   dismissOnRamp,
   isOnRampDismissed,
+  loadSolve,
   loadWorkspace,
+  saveSolve,
   saveWorkspace,
 } from '@/lib/brief/storage';
 import type { BriefSession, BriefTask } from '@/lib/brief/types';
@@ -18,6 +21,7 @@ import { HtmlRoom } from './HtmlRoom';
 import { OnRamp } from './OnRamp';
 import { PythonRoom } from './PythonRoom';
 import { SelfMarkRoom } from './SelfMarkRoom';
+import { SolveWalkthrough } from './SolveWalkthrough';
 
 interface Props {
   session: BriefSession;
@@ -79,6 +83,58 @@ function TaskRoom({ session, index, task }: TaskRoomProps) {
     return { [defaultFileFor(task)]: '' };
   });
 
+  type WalkState =
+    | { phase: 'closed' }
+    | { phase: 'loading' }
+    | { phase: 'error'; message: string }
+    | { phase: 'open'; solve: SolveResponse };
+
+  const [walk, setWalk] = useState<WalkState>({ phase: 'closed' });
+
+  const openWalkthrough = useCallback(async () => {
+    // Cached from a previous open? Show it instantly and skip the call.
+    const cached = loadSolve(session.id, task.id);
+    if (cached) {
+      const parsed = solveResponseSchema.safeParse(cached);
+      if (parsed.success) {
+        setWalk({ phase: 'open', solve: parsed.data });
+        return;
+      }
+    }
+
+    setWalk({ phase: 'loading' });
+    try {
+      const res = await fetch('/api/brief/solve', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ task }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({ message: 'The walkthrough could not be built.' }));
+        setWalk({
+          phase: 'error',
+          message: typeof data.message === 'string' ? data.message : 'Something went wrong.',
+        });
+        return;
+      }
+      const data = (await res.json()) as unknown;
+      const parsed = solveResponseSchema.safeParse(data);
+      if (!parsed.success) {
+        setWalk({ phase: 'error', message: 'The walkthrough author returned an unexpected shape.' });
+        return;
+      }
+      saveSolve(session.id, task.id, parsed.data);
+      setWalk({ phase: 'open', solve: parsed.data });
+    } catch (err) {
+      setWalk({
+        phase: 'error',
+        message: err instanceof Error ? err.message : 'Network error.',
+      });
+    }
+  }, [session.id, task]);
+
+  const closeWalkthrough = useCallback(() => setWalk({ phase: 'closed' }), []);
+
   const onFilesChange = useCallback(
     (next: Record<string, string>) => {
       setFiles(next);
@@ -116,6 +172,19 @@ function TaskRoom({ session, index, task }: TaskRoomProps) {
           </Link>
         </div>
         <div className="flex shrink-0 items-center gap-4 text-xs">
+          <button
+            type="button"
+            onClick={() => void openWalkthrough()}
+            disabled={walk.phase === 'loading'}
+            className="rounded-lg border border-accent/40 bg-accent-soft/50 px-3 py-1.5 text-accent transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-60"
+          >
+            {walk.phase === 'loading' ? 'Building…' : 'Show me one way'}
+          </button>
+          {walk.phase === 'error' ? (
+            <span role="status" className="text-danger">
+              {walk.message}
+            </span>
+          ) : null}
           {!onRampOpen && task.concepts.length > 0 ? (
             <button
               type="button"
@@ -185,6 +254,14 @@ function TaskRoom({ session, index, task }: TaskRoomProps) {
           files,
         }}
       />
+
+      {walk.phase === 'open' ? (
+        <SolveWalkthrough
+          taskTitle={task.title}
+          solve={walk.solve}
+          onClose={closeWalkthrough}
+        />
+      ) : null}
     </div>
   );
 }

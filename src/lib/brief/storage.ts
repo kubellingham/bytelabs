@@ -174,3 +174,32 @@ export function dismissOnRamp(sessionId: string, taskId: string): void {
     /* ignore */
   }
 }
+
+/**
+ * Per-(session, task) cached walkthrough response. The solve endpoint is a
+ * paid Claude call, so once we have a good walkthrough we keep it around for
+ * the life of the session — re-opening the walkthrough is instant and
+ * credit-free.
+ */
+export function loadSolve(sessionId: string, taskId: string): unknown {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(`${KEY_PREFIX}${sessionId}.solve.${taskId}`);
+    if (!raw) return null;
+    return JSON.parse(raw);
+  } catch {
+    return null;
+  }
+}
+
+export function saveSolve(sessionId: string, taskId: string, response: unknown): void {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(
+      `${KEY_PREFIX}${sessionId}.solve.${taskId}`,
+      JSON.stringify(response),
+    );
+  } catch {
+    /* ignore */
+  }
+}

@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
+import { hasNthOccurrence } from '@/lib/brief/solve';
+import { solveResponseSchema } from '@/lib/brief/solve-types';
 import { briefSessionSchema, briefTaskSchema, type BriefTask } from '@/lib/brief/types';
 import { extractJson, resolvePythonVerdict } from '@/lib/brief/verdict';
 
@@ -159,6 +161,49 @@ describe('resolvePythonVerdict', () => {
     });
     expect(verdict.tone).toBe('neutral');
     expect(verdict.detail).toBeTruthy();
+  });
+});
+
+describe('solve — hasNthOccurrence', () => {
+  const source = 'for i in range(2, n):\n    if n % i == 0:\n        is_prime = False\n        break';
+
+  it('finds a substring that exists', () => {
+    expect(hasNthOccurrence(source, 'for i in range(2, n):', 1)).toBe(true);
+    expect(hasNthOccurrence(source, 'break', 1)).toBe(true);
+  });
+
+  it('returns false when the substring is not present', () => {
+    expect(hasNthOccurrence(source, 'while True:', 1)).toBe(false);
+    expect(hasNthOccurrence(source, '', 1)).toBe(false);
+  });
+
+  it('respects the occurrence index', () => {
+    const doubled = 'break\nprint(n)\nbreak';
+    expect(hasNthOccurrence(doubled, 'break', 1)).toBe(true);
+    expect(hasNthOccurrence(doubled, 'break', 2)).toBe(true);
+    expect(hasNthOccurrence(doubled, 'break', 3)).toBe(false);
+  });
+});
+
+describe('solveResponseSchema', () => {
+  it('parses a well-shaped walkthrough', () => {
+    const parsed = solveResponseSchema.safeParse({
+      solution: 'print("hi")',
+      beats: [
+        { find: 'print("hi")', note: 'This line prints hi.' },
+        { find: '"hi"', note: 'That is our message.' },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      // occurrence defaults to 1
+      expect(parsed.data.beats[0]?.occurrence).toBe(1);
+    }
+  });
+
+  it('rejects an empty beats array', () => {
+    const parsed = solveResponseSchema.safeParse({ solution: 'x', beats: [] });
+    expect(parsed.success).toBe(false);
   });
 });
 
