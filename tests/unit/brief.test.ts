@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { evaluatePassing } from '@/lib/brief/grading';
 import { formatPythonError } from '@/lib/brief/python-errors';
 import {
   filterValidBlanks,
@@ -257,6 +258,70 @@ describe('solve — makeGhostForRound', () => {
 
   it('is a no-op in round 2 when there are no blanks', () => {
     expect(makeGhostForRound(solution, [], 2)).toBe(solution);
+  });
+});
+
+describe('grading — evaluatePassing', () => {
+  it('strict pass when stdout equals expectedOutput after trim', () => {
+    expect(evaluatePassing('  7 is a prime number.\n', '7 is a prime number.', undefined)).toEqual({
+      pass: true,
+      mode: 'strict',
+    });
+  });
+
+  it('strict pass wins over lenient even when both would match', () => {
+    // Both strict and lenient would say pass; the label should be strict.
+    expect(
+      evaluatePassing('7 is a prime number.', '7 is a prime number.', {
+        mustContain: ['7', 'prime'],
+        mustNotContain: ['not'],
+      }),
+    ).toEqual({ pass: true, mode: 'strict' });
+  });
+
+  it('lenient pass when acceptance mustContain is all present and no mustNotContain hits', () => {
+    // The learner wrote "7 is prime" — different wording but valid.
+    expect(
+      evaluatePassing('7 is prime', '7 is a prime number.', {
+        mustContain: ['7', 'prime'],
+        mustNotContain: ['not'],
+      }),
+    ).toEqual({ pass: true, mode: 'lenient' });
+  });
+
+  it('mustNotContain vetoes a lenient pass', () => {
+    // Wrong verdict — "not prime" for input=7 must not slip through.
+    expect(
+      evaluatePassing('7 is not prime', '7 is a prime number.', {
+        mustContain: ['7', 'prime'],
+        mustNotContain: ['not'],
+      }),
+    ).toEqual({ pass: false });
+  });
+
+  it('case-insensitive matching for both mustContain and mustNotContain', () => {
+    expect(
+      evaluatePassing('7 IS PRIME', '7 is a prime number.', {
+        mustContain: ['7', 'prime'],
+        mustNotContain: ['not'],
+      }),
+    ).toEqual({ pass: true, mode: 'lenient' });
+    expect(
+      evaluatePassing('7 IS NOT PRIME', '7 is a prime number.', {
+        mustContain: ['7', 'prime'],
+        mustNotContain: ['not'],
+      }),
+    ).toEqual({ pass: false });
+  });
+
+  it('fails when no expectedOutput and no acceptance is present', () => {
+    expect(evaluatePassing('anything', undefined, undefined)).toEqual({ pass: false });
+  });
+
+  it('lenient can pass even when expectedOutput is absent', () => {
+    expect(
+      evaluatePassing('7 is prime', undefined, { mustContain: ['prime'] }),
+    ).toEqual({ pass: true, mode: 'lenient' });
   });
 });
 

@@ -33,7 +33,11 @@ Output strict JSON with this shape and nothing else:
     "<short verbatim substring of the solution, will be blanked out for the learner to type back>",
     "..."
   ],
-  "expectedOutput": "<what the solution prints for a representative input, used to grade the rewrite>"
+  "expectedOutput": "<what the solution prints for a representative input, used to grade the rewrite>",
+  "acceptancePattern": {
+    "mustContain": ["<substring>", "..."],
+    "mustNotContain": ["<substring>", "..."]
+  }
 }
 
 Rules for the SOLUTION:
@@ -64,6 +68,27 @@ Rules for expectedOutput:
 - What the solution prints for a plausible representative input. For programs that read input via input(), pick a reasonable value (e.g. 7 for a prime check) and give the output for that value.
 - Newline-terminated lines exactly as print() would produce them.
 - No commentary; just the raw output text.
+
+Rules for acceptancePattern:
+- This is a LENIENT grading fallback. When the learner writes their own valid solution with slightly different wording, this lets them pass even though their stdout does not equal expectedOutput verbatim.
+- mustContain (required): 1 to 3 short case-insensitive substrings that ALL must appear in a correct answer for the same representative input. Pick the essence — the number/value being answered, plus the essential verdict word.
+- mustNotContain (optional): case-insensitive substrings that must NOT appear. Use this when a single word (e.g. "prime") could appear in both a correct and an incorrect answer, and you need a negation to rule the wrong one out.
+- Every substring in mustContain must also appear (case-insensitive) in expectedOutput. Every substring in mustNotContain must NOT appear (case-insensitive) in expectedOutput. Otherwise the reference solution itself would fail the lenient check — that would be a bug.
+- Keep the pattern small. 1-3 items per array. Bigger patterns overfit to your wording and defeat the purpose.
+
+Worked example for a prime-check with input 7:
+  expectedOutput: "7 is a prime number."
+  acceptancePattern: { "mustContain": ["7", "prime"], "mustNotContain": ["not"] }
+  → accepts "7 is prime", "7 is a prime number.", "7 → PRIME"
+  → rejects "7 is not prime", "not a prime"
+
+Worked example for input 8 (not prime):
+  expectedOutput: "8 is not a prime number."
+  acceptancePattern: { "mustContain": ["8", "not prime"] }
+  → accepts "8 is not prime", "8 → NOT PRIME"
+  → rejects "8 is prime"
+
+Omit acceptancePattern entirely when the task's essence really is the exact wording (e.g. "print exactly '*' * n on one line") — strict grading is the honest answer there.
 
 Return the JSON object only. No prose outside the JSON. No code fences.`;
 

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { evaluatePassing, type GradingMode } from '@/lib/brief/grading';
 import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
 import { makeGhostForRound } from '@/lib/brief/solve';
 import type { SolveResponse } from '@/lib/brief/solve-types';
@@ -18,7 +19,7 @@ type Round = 1 | 2;
 type RunState =
   | { phase: 'idle' }
   | { phase: 'running' }
-  | { phase: 'pass'; got: string }
+  | { phase: 'pass'; got: string; mode: GradingMode }
   | { phase: 'fail'; got: string; error: string | null };
 
 /**
@@ -68,12 +69,13 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       setRun({ phase: 'fail', got, error: result.error });
       return;
     }
-    if (expected && got === expected) {
-      setRun({ phase: 'pass', got });
+    const grade = evaluatePassing(result.stdout, solve.expectedOutput, solve.acceptancePattern);
+    if (grade.pass) {
+      setRun({ phase: 'pass', got, mode: grade.mode });
       return;
     }
     setRun({ phase: 'fail', got, error: null });
-  }, [source, expected]);
+  }, [source, solve.expectedOutput, solve.acceptancePattern]);
 
   const onNextRound = useCallback(() => {
     if (round === 1 && hasBlanks) {
@@ -186,7 +188,11 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
           }`}
         >
           <p className="mb-1 font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
-            {run.phase === 'pass' ? 'Output matches' : 'Not yet — your output was'}
+            {run.phase === 'pass'
+              ? run.mode === 'strict'
+                ? 'Output matches'
+                : 'Accepted — different wording, same answer'
+              : 'Not yet — your output was'}
           </p>
           <pre className="whitespace-pre-wrap font-mono text-sm text-ink">
             {run.phase === 'fail' && run.error ? run.error : run.got || '(no output)'}
@@ -258,7 +264,7 @@ function SilhouetteEditor({
       <div className="relative">
         <pre
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 whitespace-pre px-4 py-3 font-mono text-sm leading-relaxed text-ink opacity-[0.18] select-none"
+          className="pointer-events-none absolute inset-0 whitespace-pre px-4 py-3 font-mono text-sm leading-relaxed text-ink opacity-[0.28] select-none"
         >
           {ghost}
         </pre>
