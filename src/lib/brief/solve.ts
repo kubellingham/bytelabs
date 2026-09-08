@@ -140,6 +140,37 @@ export function makeRewriteTemplate(solution: string, blanks: readonly string[])
 }
 
 /**
+ * The silhouette the learner types on top of during REWRITE.
+ *
+ * Round 1 (trace) shows the whole solution as a low-opacity ghost — the
+ * learner types over it verbatim. Round 2 (recall) auto-removes the blanks
+ * from the ghost by replacing them with whitespace of the same length, so
+ * the surrounding structure stays put but the learner has to remember what
+ * belongs in the gaps. Layout is preserved across rounds so the overlay
+ * grid aligns cleanly.
+ */
+export function makeGhostForRound(
+  solution: string,
+  blanks: readonly string[],
+  round: 1 | 2,
+): string {
+  if (round === 1) return solution;
+  let out = solution;
+  for (const blank of blanks) {
+    const idx = out.indexOf(blank);
+    if (idx < 0) continue;
+    // Same-length whitespace preserves the visual grid — new-lines inside a
+    // blank stay as new-lines so wrapping does not shift.
+    const replacement = blank
+      .split('')
+      .map((ch) => (ch === '\n' ? '\n' : ' '))
+      .join('');
+    out = out.slice(0, idx) + replacement + out.slice(idx + blank.length);
+  }
+  return out;
+}
+
+/**
  * Check that `find` appears at least `occurrence` times in `text`.
  * The walkthrough highlighter uses the same rule when it picks the Nth
  * instance to light up, so the validator matches it exactly.

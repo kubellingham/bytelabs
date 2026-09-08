@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
-import { makeRewriteTemplate } from '@/lib/brief/solve';
+import { makeGhostForRound } from '@/lib/brief/solve';
 import type { SolveResponse } from '@/lib/brief/solve-types';
 
 interface Props {
@@ -12,6 +12,8 @@ interface Props {
   onBack: () => void;
 }
 
+type Round = 1 | 2;
+
 type RunState =
   | { phase: 'idle' }
   | { phase: 'running' }
@@ -19,22 +21,25 @@ type RunState =
   | { phase: 'fail'; got: string; error: string | null };
 
 /**
- * The REWRITE phase.
+ * REWRITE — two rounds of typing over a silhouette.
  *
- * The learner sees the solution again, but this time some of its meaningful
- * pieces are replaced with `____` placeholders. They fill in the blanks
- * (typing over the placeholders) and hit Run. The pass check is stdout
- * matching the reference `expectedOutput`. A "Show me the solution" escape
- * hatch reveals the answer for anyone who is properly stuck.
+ * Round 1 (trace). The whole solution appears as a low-opacity ghost behind
+ * a transparent textarea. The learner types on top of it — no deleting, no
+ * blanks. Muscle memory first: prove you can type the whole thing while
+ * looking at the shape.
+ *
+ * Round 2 (recall). On passing round 1, the ghost's `blanks` positions are
+ * AUTO-REMOVED — those spots become empty, the rest of the ghost stays.
+ * The learner still sees the surrounding structure as ghost text but has to
+ * remember what belongs in the gaps.
+ *
+ * Passing round 2 finishes the walkthrough. Grading is the same both
+ * rounds: their stdout must match the reference expectedOutput.
  */
 export function SolveRewrite({ solve, onDone, onBack }: Props) {
-  const template = useMemo(
-    () => makeRewriteTemplate(solve.solution, solve.blanks),
-    [solve.solution, solve.blanks],
-  );
-  const [source, setSource] = useState(template);
+  const [round, setRound] = useState<Round>(1);
+  const [source, setSource] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
-  const [showReveal, setShowReveal] = useState(false);
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
@@ -42,7 +47,17 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
     void loadPyodideOnce();
   }, []);
 
+  // Refocus on round change so the learner keeps typing without an extra click.
+  useEffect(() => {
+    editorRef.current?.focus();
+  }, [round]);
+
+  const ghost = useMemo(
+    () => makeGhostForRound(solve.solution, solve.blanks, round),
+    [solve.solution, solve.blanks, round],
+  );
   const expected = solve.expectedOutput?.trim() ?? '';
+  const hasBlanks = solve.blanks.length > 0;
 
   const onRun = useCallback(async () => {
     setRun({ phase: 'running' });
@@ -59,6 +74,16 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
     setRun({ phase: 'fail', got, error: null });
   }, [source, expected]);
 
+  const onNextRound = useCallback(() => {
+    if (round === 1 && hasBlanks) {
+      setRound(2);
+      setSource('');
+      setRun({ phase: 'idle' });
+      return;
+    }
+    onDone();
+  }, [round, hasBlanks, onDone]);
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
       if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
@@ -69,11 +94,21 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
     [onRun],
   );
 
+  const roundLabel = round === 1 ? 'Round 1 · Trace' : 'Round 2 · Recall';
+  const roundHeading =
+    round === 1
+      ? 'Type it out, over the silhouette.'
+      : 'Some pieces are gone. Type what you remember.';
+  const roundBlurb =
+    round === 1
+      ? 'The whole solution is here as a shadow. Just type on top of it. Nothing to solve yet — this round is muscle memory.'
+      : 'The surrounding structure is still here as a shadow to guide you. The meaningful pieces are gone — you fill them in.';
+
   return (
     <div className="mx-auto flex min-h-full max-w-4xl flex-col justify-start px-8 py-10">
       <div className="flex items-center justify-between">
         <p className="font-mono text-[11px] tracking-[0.18em] text-subtle uppercase">
-          Now you type it
+          {roundLabel}
         </p>
         <button
           type="button"
@@ -85,36 +120,22 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       </div>
 
       <h1 className="mt-3 text-[length:var(--bl-step-2)] font-semibold text-ink">
-        Fill in the {solve.blanks.length}{' '}
-        blank{solve.blanks.length === 1 ? '' : 's'}.
+        {roundHeading}
       </h1>
-      <p className="mt-2 max-w-2xl text-base text-muted">
-        The structure is here to guide you. Replace each <code className="rounded bg-raised px-1 font-mono text-ink">____</code>{' '}
-        with what belongs there, then hit Run. Nothing to lose — mistakes are how you know.
-      </p>
+      <p className="mt-2 max-w-2xl text-base text-muted">{roundBlurb}</p>
 
-      <div className="mt-6 overflow-hidden rounded-xl border border-line bg-code">
-        <div className="flex items-center justify-between border-b border-line px-4 py-2">
-          <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
-            Your editor
-          </p>
-          <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
-            ⌘/Ctrl + Enter to run
-          </p>
-        </div>
-        <textarea
-          ref={editorRef}
-          value={source}
-          onChange={(event) => {
-            setSource(event.target.value);
-            if (run.phase !== 'idle') setRun({ phase: 'idle' });
-          }}
-          onKeyDown={onKeyDown}
-          rows={Math.max(6, source.split('\n').length + 1)}
-          spellCheck={false}
-          className="w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink outline-none"
-        />
-      </div>
+      <RoundDots round={round} hasRound2={hasBlanks} />
+
+      <SilhouetteEditor
+        ghost={ghost}
+        value={source}
+        onChange={(next) => {
+          setSource(next);
+          if (run.phase !== 'idle') setRun({ phase: 'idle' });
+        }}
+        onKeyDown={onKeyDown}
+        editorRef={editorRef}
+      />
 
       <div className="mt-4 flex items-center gap-3">
         <button
@@ -125,22 +146,16 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
         >
           {run.phase === 'running' ? 'Running…' : 'Run'}
         </button>
+
         {run.phase === 'pass' ? (
           <button
             type="button"
-            onClick={onDone}
+            onClick={onNextRound}
             className="rounded-lg border border-success/60 bg-success-soft px-5 py-3 text-base font-medium text-ink transition-colors hover:bg-success-soft/80"
           >
-            Nice — that’s it →
+            {round === 1 && hasBlanks ? 'Next round →' : 'Nice — that’s it →'}
           </button>
         ) : null}
-        <button
-          type="button"
-          onClick={() => setShowReveal((r) => !r)}
-          className="ms-auto text-sm text-muted hover:text-ink"
-        >
-          {showReveal ? 'Hide the solution' : 'Stuck? Show me the solution'}
-        </button>
       </div>
 
       {run.phase !== 'idle' && run.phase !== 'running' ? (
@@ -168,19 +183,77 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
           ) : null}
         </div>
       ) : null}
+    </div>
+  );
+}
 
-      {showReveal ? (
-        <div className="mt-6 overflow-hidden rounded-xl border border-attention/40 bg-attention-soft/40">
-          <div className="flex items-center justify-between border-b border-attention/30 px-4 py-2">
-            <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
-              The solution — try again first, then peek
-            </p>
-          </div>
-          <pre className="overflow-x-auto px-4 py-3 font-mono text-sm text-ink">
-            {solve.solution}
-          </pre>
-        </div>
-      ) : null}
+function RoundDots({ round, hasRound2 }: { round: Round; hasRound2: boolean }) {
+  if (!hasRound2) return null;
+  return (
+    <div className="mt-4 flex items-center gap-1.5">
+      {[1, 2].map((n) => (
+        <span
+          key={n}
+          aria-hidden="true"
+          className={`h-1.5 w-6 rounded-full ${
+            n === round ? 'bg-accent' : n < round ? 'bg-accent/40' : 'bg-line-strong'
+          }`}
+        />
+      ))}
+    </div>
+  );
+}
+
+interface SilhouetteEditorProps {
+  ghost: string;
+  value: string;
+  onChange: (next: string) => void;
+  onKeyDown: (event: React.KeyboardEvent<HTMLTextAreaElement>) => void;
+  editorRef: React.Ref<HTMLTextAreaElement>;
+}
+
+/**
+ * The silhouette editor. A `<pre>` renders the ghost in low opacity behind
+ * a transparent `<textarea>` at the same padding, font, and line-height.
+ * Because both are monospace, the learner's characters land squarely on top
+ * of the ghost characters and the ghost shows through wherever they have
+ * not typed yet.
+ */
+function SilhouetteEditor({
+  ghost,
+  value,
+  onChange,
+  onKeyDown,
+  editorRef,
+}: SilhouetteEditorProps) {
+  const rows = Math.max(6, ghost.split('\n').length + 1);
+  return (
+    <div className="mt-6 overflow-hidden rounded-xl border border-line bg-code">
+      <div className="flex items-center justify-between border-b border-line px-4 py-2">
+        <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
+          Your editor
+        </p>
+        <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
+          ⌘/Ctrl + Enter to run
+        </p>
+      </div>
+      <div className="relative">
+        <pre
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 whitespace-pre px-4 py-3 font-mono text-sm leading-relaxed text-ink opacity-[0.18] select-none"
+        >
+          {ghost}
+        </pre>
+        <textarea
+          ref={editorRef}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          onKeyDown={onKeyDown}
+          rows={rows}
+          spellCheck={false}
+          className="relative z-10 w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink caret-accent outline-none"
+        />
+      </div>
     </div>
   );
 }

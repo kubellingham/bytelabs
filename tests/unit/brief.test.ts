@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
-import { filterValidBlanks, hasNthOccurrence, makeRewriteTemplate } from '@/lib/brief/solve';
+import {
+  filterValidBlanks,
+  hasNthOccurrence,
+  makeGhostForRound,
+  makeRewriteTemplate,
+} from '@/lib/brief/solve';
 import { solveResponseSchema } from '@/lib/brief/solve-types';
 import { briefSessionSchema, briefTaskSchema, type BriefTask } from '@/lib/brief/types';
 import { extractJson, resolvePythonVerdict } from '@/lib/brief/verdict';
@@ -225,6 +230,31 @@ describe('solve — makeRewriteTemplate', () => {
 
   it('returns the source verbatim when there are no blanks', () => {
     expect(makeRewriteTemplate('print("hi")', [])).toBe('print("hi")');
+  });
+});
+
+describe('solve — makeGhostForRound', () => {
+  const solution = 'for i in range(2, n):\n    if n % i == 0:\n        break';
+
+  it('round 1 shows the full solution unchanged', () => {
+    expect(makeGhostForRound(solution, ['range(2, n)', 'break'], 1)).toBe(solution);
+  });
+
+  it('round 2 replaces blanks with same-length whitespace', () => {
+    const ghost = makeGhostForRound(solution, ['range(2, n)', 'break'], 2);
+    // Length is preserved so the visual grid aligns.
+    expect(ghost).toHaveLength(solution.length);
+    // Blanks are gone (as content) but the surrounding characters are intact.
+    expect(ghost).toContain('for i in ');
+    expect(ghost).not.toContain('range(2, n)');
+    expect(ghost).not.toContain('break');
+    // Newlines inside a blank stay as newlines so wrapping doesn't shift.
+    const multi = makeGhostForRound('a\nb', ['a\nb'], 2);
+    expect(multi).toBe(' \n ');
+  });
+
+  it('is a no-op in round 2 when there are no blanks', () => {
+    expect(makeGhostForRound(solution, [], 2)).toBe(solution);
   });
 });
 
