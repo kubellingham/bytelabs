@@ -105,8 +105,11 @@ export async function runPython(
   const pyodide = await loadPyodideOnce();
   const stdout: string[] = [];
   const stderr: string[] = [];
-  pyodide.setStdout({ batched: (text) => stdout.push(text) });
-  pyodide.setStderr({ batched: (text) => stderr.push(text) });
+  // Pyodide's batched stdout callback strips the trailing newline before
+  // handing each chunk to us. We reconstruct it — without this, three
+  // print() calls come back as one glued-together line.
+  pyodide.setStdout({ batched: (text) => stdout.push(text + '\n') });
+  pyodide.setStderr({ batched: (text) => stderr.push(text + '\n') });
 
   const queue = (options.stdin ?? []).slice();
   const fallback = options.promptFallback;

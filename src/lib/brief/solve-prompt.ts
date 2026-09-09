@@ -81,7 +81,8 @@ Rules for the BLANKS:
 - Together the blanks are the "spine" — filling them all proves the learner understood the shape.
 
 Rules for expectedOutput:
-- What the solution prints for a plausible representative input. For programs that read input via input(), pick a reasonable value (e.g. 7 for a prime check) and give the output for that value.
+- What the solution ACTUALLY prints for expectedInput. Trace the program in your head step by step before writing this — do not guess and do not paraphrase. If the solution sorts numbers, list them in the right order; if it counts occurrences, do the count; if it uses an f-string, produce the interpolated string character-for-character. A wrong expectedOutput here means a learner who typed the reference verbatim still fails, which is worse than no expectedOutput at all.
+- For programs that read input via input(), the input value goes in expectedInput (see below), and expectedOutput is what the program prints for THAT specific input.
 - Newline-terminated lines exactly as print() would produce them.
 - No commentary; just the raw output text.
 

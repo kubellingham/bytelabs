@@ -45,12 +45,38 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
   const [round, setRound] = useState<Round>(1);
   const [source, setSource] = useState('');
   const [run, setRun] = useState<RunState>({ phase: 'idle' });
+  // The AI sometimes writes an expectedOutput that doesn't actually match
+  // what its own solution prints (a hallucinated sort order, an off-by-one
+  // count). On mount we run the reference solution ourselves — its real
+  // stdout, if it runs cleanly, is the truth we grade against. The AI's
+  // declared value is the fallback in case the reference errors.
+  const [healedExpected, setHealedExpected] = useState<string | undefined>(
+    solve.expectedOutput,
+  );
   const editorRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     editorRef.current?.focus();
     void loadPyodideOnce();
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const result = await runPython(solve.solution, {
+        stdin: stdinLines(solve.expectedInput),
+      });
+      if (cancelled) return;
+      if (result.error) return;
+      const actual = result.stdout;
+      if (actual && actual.trim() !== (solve.expectedOutput ?? '').trim()) {
+        setHealedExpected(actual);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [solve.solution, solve.expectedInput, solve.expectedOutput]);
 
   // Refocus on round change so the learner keeps typing without an extra click.
   useEffect(() => {
@@ -61,7 +87,7 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
     () => makeGhostForRound(solve.solution, solve.blanks, round),
     [solve.solution, solve.blanks, round],
   );
-  const expected = solve.expectedOutput?.trim() ?? '';
+  const expected = healedExpected?.trim() ?? '';
   const hasBlanks = solve.blanks.length > 0;
 
   const onRun = useCallback(async () => {
@@ -82,13 +108,13 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       setRun({ phase: 'fail', got, error: result.error });
       return;
     }
-    const grade = evaluatePassing(result.stdout, solve.expectedOutput, solve.acceptancePattern);
+    const grade = evaluatePassing(result.stdout, healedExpected, solve.acceptancePattern);
     if (grade.pass) {
       setRun({ phase: 'pass', got, mode: grade.mode });
       return;
     }
     setRun({ phase: 'fail', got, error: null });
-  }, [source, solve.expectedInput, solve.expectedOutput, solve.acceptancePattern]);
+  }, [source, solve.expectedInput, healedExpected, solve.acceptancePattern]);
 
   const onNextRound = useCallback(() => {
     if (round === 1 && hasBlanks) {
