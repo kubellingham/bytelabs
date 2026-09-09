@@ -90,6 +90,8 @@ export async function solveTask(task: BriefTask): Promise<SolveResult> {
 
   const expectedOutput =
     typeof json.expectedOutput === 'string' ? json.expectedOutput : undefined;
+  const expectedInput =
+    typeof json.expectedInput === 'string' ? json.expectedInput : undefined;
 
   const viva = filterValidViva(Array.isArray(json.viva) ? json.viva : []);
 
@@ -101,6 +103,7 @@ export async function solveTask(task: BriefTask): Promise<SolveResult> {
       blanks,
       viva,
       ...(expectedOutput !== undefined ? { expectedOutput } : {}),
+      ...(expectedInput !== undefined ? { expectedInput } : {}),
     },
   };
 }

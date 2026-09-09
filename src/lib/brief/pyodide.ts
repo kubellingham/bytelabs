@@ -20,6 +20,7 @@ interface PyodideInstance {
   runPythonAsync: (code: string) => Promise<unknown>;
   setStdout: (options: { batched: (text: string) => void }) => void;
   setStderr: (options: { batched: (text: string) => void }) => void;
+  setStdin: (options: { stdin: () => string | null }) => void;
   globals: { set: (name: string, value: unknown) => void };
 }
 
@@ -70,19 +71,41 @@ import { formatPythonError } from './python-errors';
 import type { PythonRunResult } from './verdict';
 export type { PythonRunResult } from './verdict';
 
+export interface RunPythonOptions {
+  /**
+   * Values fed line-by-line into `input()` calls. Each `input()` in the
+   * program consumes one entry. Extra entries are ignored; when the
+   * program asks for more than we have, `input()` raises EOFError (a
+   * beginner-legible signal that the seed did not carry enough lines).
+   *
+   * If omitted or empty, `input()` raises immediately — the room falls
+   * back to self-mark for tasks that read interactively.
+   */
+  stdin?: readonly string[];
+}
+
 /**
  * Run a Python program and capture what it prints.
  *
- * stdin is not supported yet. When the paste's task expects the learner to
- * hard-code inputs into the source (which most beginner practicals do), that's
- * fine; when it expects `input()` interaction, the room falls back to self-mark.
+ * When the caller passes a `stdin` list (e.g. the walkthrough's
+ * expectedInput, split into lines), each `input()` call in the program
+ * consumes the next line. This lets a solution written for `input()`
+ * actually run in the browser even though Pyodide has no real terminal.
  */
-export async function runPython(code: string): Promise<PythonRunResult> {
+export async function runPython(
+  code: string,
+  options: RunPythonOptions = {},
+): Promise<PythonRunResult> {
   const pyodide = await loadPyodideOnce();
   const stdout: string[] = [];
   const stderr: string[] = [];
   pyodide.setStdout({ batched: (text) => stdout.push(text) });
   pyodide.setStderr({ batched: (text) => stderr.push(text) });
+
+  const queue = (options.stdin ?? []).slice();
+  pyodide.setStdin({
+    stdin: () => (queue.length === 0 ? null : queue.shift() ?? null),
+  });
 
   const started = performance.now();
   let error: string | null = null;
@@ -94,4 +117,15 @@ export async function runPython(code: string): Promise<PythonRunResult> {
   }
   const durationMs = performance.now() - started;
   return { stdout: stdout.join(''), stderr: stderr.join(''), error, durationMs };
+}
+
+/**
+ * Turn a multi-line stdin blob into the array `runPython` expects.
+ * Empty input becomes an empty array. Trailing newline is stripped so
+ * "7\n" and "7" both mean "one line: 7".
+ */
+export function stdinLines(raw: string | undefined | null): string[] {
+  if (!raw) return [];
+  const trimmed = raw.endsWith('\n') ? raw.slice(0, -1) : raw;
+  return trimmed.split('\n');
 }

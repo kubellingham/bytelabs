@@ -122,6 +122,14 @@ export const solveResponseSchema = z.object({
    */
   expectedOutput: z.string().optional(),
   /**
+   * The representative stdin the reference solution was written against
+   * — one line per prompt. When the solution reads via `input()`, the
+   * runtime pipes these lines into Pyodide's stdin in order so the
+   * learner's rewrite runs the same way the reference does. Absent when
+   * the solution reads no input.
+   */
+  expectedInput: z.string().optional(),
+  /**
    * Lenient grading target. When present, a learner whose stdout satisfies
    * this pattern also passes, even if it does not match expectedOutput
    * verbatim. See AcceptancePattern for the rules.

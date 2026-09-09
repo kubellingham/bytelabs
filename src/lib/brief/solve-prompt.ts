@@ -34,6 +34,7 @@ Output strict JSON with this shape and nothing else:
     "..."
   ],
   "expectedOutput": "<what the solution prints for a representative input, used to grade the rewrite>",
+  "expectedInput": "<the exact stdin that produced expectedOutput — one line per input() call, joined by \\n. Omit only when the solution never calls input()>",
   "acceptancePattern": {
     "mustContain": ["<substring>", "..."],
     "mustNotContain": ["<substring>", "..."]
@@ -84,6 +85,13 @@ Rules for expectedOutput:
 - Newline-terminated lines exactly as print() would produce them.
 - No commentary; just the raw output text.
 
+Rules for expectedInput:
+- REQUIRED when the solution calls input() at all. The learner's rewrite runs in a browser sandbox with no terminal, so the runtime pipes these lines into stdin. Without expectedInput the very first input() raises an I/O error, and the learner will think their code is broken when it is not.
+- One line per input() call, in the same order the solution asks for them. Join multiple lines with "\\n". Do not include the input()'s prompt text — only the value the user would type.
+- Match expectedOutput: expectedOutput is what the program prints when it reads expectedInput. If you change one, change the other.
+- Omit expectedInput entirely (or leave it empty) ONLY when the solution reads no input at all.
+- Examples: prime-check with n = 7 → expectedInput: "7". Two-number sum → expectedInput: "3\\n4". A yes/no question → expectedInput: "yes".
+
 Rules for acceptancePattern:
 - This is a LENIENT grading fallback. When the learner writes their own valid solution with slightly different wording, this lets them pass even though their stdout does not equal expectedOutput verbatim.
 - mustContain (required): 1 to 3 short case-insensitive substrings that ALL must appear in a correct answer for the same representative input. Pick the essence — the number/value being answered, plus the essential verdict word.
@@ -92,12 +100,14 @@ Rules for acceptancePattern:
 - Keep the pattern small. 1-3 items per array. Bigger patterns overfit to your wording and defeat the purpose.
 
 Worked example for a prime-check with input 7:
+  expectedInput: "7"
   expectedOutput: "7 is a prime number."
   acceptancePattern: { "mustContain": ["7", "prime"], "mustNotContain": ["not"] }
   → accepts "7 is prime", "7 is a prime number.", "7 → PRIME"
   → rejects "7 is not prime", "not a prime"
 
 Worked example for input 8 (not prime):
+  expectedInput: "8"
   expectedOutput: "8 is not a prime number."
   acceptancePattern: { "mustContain": ["8", "not prime"] }
   → accepts "8 is not prime", "8 → NOT PRIME"

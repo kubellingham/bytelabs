@@ -4,6 +4,7 @@ import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
 import { DEFAULT_ZOOM, ZOOM_LEVELS, nextZoomLevel } from '@/lib/brief/editor-zoom';
 import { evaluatePassing } from '@/lib/brief/grading';
+import { stdinLines } from '@/lib/brief/pyodide';
 import { formatPythonError } from '@/lib/brief/python-errors';
 import {
   filterValidBlanks,
@@ -456,6 +457,27 @@ NameError: name 'x' is not defined`;
     expect(formatPythonError('KeyboardInterrupt')).toBe('KeyboardInterrupt');
     expect(formatPythonError('')).toBe('');
   });
+
+  it('stdinLines splits a blob into one entry per input() call', () => {
+    expect(stdinLines('7')).toEqual(['7']);
+    expect(stdinLines('7\n')).toEqual(['7']);
+    expect(stdinLines('3\n4')).toEqual(['3', '4']);
+    expect(stdinLines('3\n4\n')).toEqual(['3', '4']);
+    expect(stdinLines('')).toEqual([]);
+    expect(stdinLines(undefined)).toEqual([]);
+    expect(stdinLines(null)).toEqual([]);
+  });
+
+  it('translates the stdin-less OSError into a plain-English hint', () => {
+    const raw = `Traceback (most recent call last):
+  File "<exec>", line 1, in <module>
+OSError: [Errno 29] I/O error`;
+    const formatted = formatPythonError(raw);
+    expect(formatted).not.toContain('Errno 29');
+    expect(formatted).not.toContain('OSError');
+    expect(formatted).toContain('input()');
+    expect(formatted).toContain('no keyboard');
+  });
 });
 
 describe('editor-keys — applyCodeEditorKey', () => {
@@ -531,6 +553,30 @@ describe('solveResponseSchema', () => {
   it('rejects an empty beats array', () => {
     const parsed = solveResponseSchema.safeParse({ solution: 'x', beats: [] });
     expect(parsed.success).toBe(false);
+  });
+
+  it('carries expectedInput through when the AI provides one', () => {
+    const parsed = solveResponseSchema.safeParse({
+      solution: 'n = int(input())\nprint(n * 2)',
+      beats: [{ find: 'input()', note: 'Reads a number.' }],
+      expectedInput: '7',
+      expectedOutput: '14',
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.expectedInput).toBe('7');
+    }
+  });
+
+  it('leaves expectedInput undefined when the AI omits it', () => {
+    const parsed = solveResponseSchema.safeParse({
+      solution: 'print("hi")',
+      beats: [{ find: 'print("hi")', note: 'Prints hi.' }],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      expect(parsed.data.expectedInput).toBeUndefined();
+    }
   });
 });
 

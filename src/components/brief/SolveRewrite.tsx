@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
 import { useEditorZoom, zoomStyle } from '@/lib/brief/editor-zoom';
 import { evaluatePassing, type GradingMode } from '@/lib/brief/grading';
-import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
+import { loadPyodideOnce, runPython, stdinLines } from '@/lib/brief/pyodide';
 import { makeGhostForRound } from '@/lib/brief/solve';
 import type { SolveResponse } from '@/lib/brief/solve-types';
 
@@ -66,7 +66,7 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
 
   const onRun = useCallback(async () => {
     setRun({ phase: 'running' });
-    const result = await runPython(source);
+    const result = await runPython(source, { stdin: stdinLines(solve.expectedInput) });
     const got = result.stdout.trim();
     if (result.error) {
       setRun({ phase: 'fail', got, error: result.error });
@@ -78,7 +78,7 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       return;
     }
     setRun({ phase: 'fail', got, error: null });
-  }, [source, solve.expectedOutput, solve.acceptancePattern]);
+  }, [source, solve.expectedInput, solve.expectedOutput, solve.acceptancePattern]);
 
   const onNextRound = useCallback(() => {
     if (round === 1 && hasBlanks) {
@@ -166,6 +166,17 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
       <p className="mt-2 max-w-2xl text-base text-muted">{roundBlurb}</p>
 
       <RoundDots round={round} hasRound2={hasBlanks} />
+
+      {solve.expectedInput ? (
+        <div className="mt-4 flex items-start gap-3 rounded-lg border border-line bg-raised px-4 py-3">
+          <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
+            Input fed in
+          </p>
+          <pre className="whitespace-pre-wrap font-mono text-sm text-ink">
+            {solve.expectedInput}
+          </pre>
+        </div>
+      ) : null}
 
       <SilhouetteEditor
         ghost={ghost}
