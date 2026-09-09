@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 
 import { conceptCount, getConcept, humaniseSlug } from '@/lib/brief/concepts';
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { DEFAULT_ZOOM, ZOOM_LEVELS, nextZoomLevel } from '@/lib/brief/editor-zoom';
 import { evaluatePassing } from '@/lib/brief/grading';
 import { formatPythonError } from '@/lib/brief/python-errors';
 import {
@@ -258,6 +259,40 @@ describe('solve — makeGhostForRound', () => {
 
   it('is a no-op in round 2 when there are no blanks', () => {
     expect(makeGhostForRound(solution, [], 2)).toBe(solution);
+  });
+});
+
+describe('editor-zoom — nextZoomLevel', () => {
+  it('zooms in to the next larger level', () => {
+    expect(nextZoomLevel(1.0, 'in')).toBe(1.15);
+    expect(nextZoomLevel(0.75, 'in')).toBe(0.85);
+  });
+
+  it('zooms out to the next smaller level', () => {
+    expect(nextZoomLevel(1.0, 'out')).toBe(0.85);
+    expect(nextZoomLevel(1.15, 'out')).toBe(1.0);
+  });
+
+  it('clamps at the largest level when zooming past the top', () => {
+    const top = ZOOM_LEVELS[ZOOM_LEVELS.length - 1]!;
+    expect(nextZoomLevel(top, 'in')).toBe(top);
+  });
+
+  it('clamps at the smallest level when zooming past the bottom', () => {
+    const bottom = ZOOM_LEVELS[0]!;
+    expect(nextZoomLevel(bottom, 'out')).toBe(bottom);
+  });
+
+  it('reset returns the default', () => {
+    expect(nextZoomLevel(1.75, 'reset')).toBe(DEFAULT_ZOOM);
+    expect(nextZoomLevel(0.75, 'reset')).toBe(DEFAULT_ZOOM);
+  });
+
+  it('snaps an off-grid current value to the nearest level before stepping', () => {
+    // 1.05 snaps to 1.0, then in → 1.15
+    expect(nextZoomLevel(1.05, 'in')).toBe(1.15);
+    // 1.05 snaps to 1.0, then out → 0.85
+    expect(nextZoomLevel(1.05, 'out')).toBe(0.85);
   });
 });
 

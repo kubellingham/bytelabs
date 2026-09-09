@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { useEditorZoom, zoomStyle } from '@/lib/brief/editor-zoom';
 import { evaluatePassing, type GradingMode } from '@/lib/brief/grading';
 import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
 import { makeGhostForRound } from '@/lib/brief/solve';
 import type { SolveResponse } from '@/lib/brief/solve-types';
+
+import { EditorZoomControls } from './EditorZoomControls';
 
 interface Props {
   solve: SolveResponse;
@@ -87,11 +90,29 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
     onDone();
   }, [round, hasBlanks, onDone]);
 
+  const { zoomIn, zoomOut, reset: zoomReset } = useEditorZoom();
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && event.key === 'Enter') {
         event.preventDefault();
         void onRun();
+        return;
+      }
+      if (mod && (event.key === '=' || event.key === '+')) {
+        event.preventDefault();
+        zoomIn();
+        return;
+      }
+      if (mod && event.key === '-') {
+        event.preventDefault();
+        zoomOut();
+        return;
+      }
+      if (mod && event.key === '0') {
+        event.preventDefault();
+        zoomReset();
         return;
       }
       const el = event.currentTarget;
@@ -111,7 +132,7 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
         });
       }
     },
-    [onRun, source],
+    [onRun, source, zoomIn, zoomOut, zoomReset],
   );
 
   const roundLabel = round === 1 ? 'Round 1 · Trace' : 'Round 2 · Recall';
@@ -241,7 +262,8 @@ interface SilhouetteEditorProps {
  * a transparent `<textarea>` at the same padding, font, and line-height.
  * Because both are monospace, the learner's characters land squarely on top
  * of the ghost characters and the ghost shows through wherever they have
- * not typed yet.
+ * not typed yet. Both share the same zoom style so alignment survives any
+ * font-size change.
  */
 function SilhouetteEditor({
   ghost,
@@ -250,21 +272,27 @@ function SilhouetteEditor({
   onKeyDown,
   editorRef,
 }: SilhouetteEditorProps) {
+  const { scale } = useEditorZoom();
+  const style = zoomStyle(scale);
   const rows = Math.max(6, ghost.split('\n').length + 1);
   return (
     <div className="mt-6 overflow-hidden rounded-xl border border-line bg-code">
-      <div className="flex items-center justify-between border-b border-line px-4 py-2">
+      <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
         <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
           Your editor
         </p>
-        <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
-          ⌘/Ctrl + Enter to run
-        </p>
+        <div className="flex items-center gap-3">
+          <EditorZoomControls />
+          <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
+            ⌘/Ctrl + Enter to run
+          </p>
+        </div>
       </div>
       <div className="relative">
         <pre
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 whitespace-pre px-4 py-3 font-mono text-sm leading-relaxed text-ink opacity-[0.28] select-none"
+          style={style}
+          className="pointer-events-none absolute inset-0 whitespace-pre px-4 py-3 font-mono text-ink opacity-[0.28] select-none"
         >
           {ghost}
         </pre>
@@ -275,7 +303,8 @@ function SilhouetteEditor({
           onKeyDown={onKeyDown}
           rows={rows}
           spellCheck={false}
-          className="relative z-10 w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink caret-accent outline-none"
+          style={style}
+          className="relative z-10 w-full resize-none bg-transparent px-4 py-3 font-mono text-ink caret-accent outline-none"
         />
       </div>
     </div>

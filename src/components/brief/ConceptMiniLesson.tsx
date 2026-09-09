@@ -3,8 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { applyCodeEditorKey } from '@/lib/brief/editor-keys';
+import { useEditorZoom, zoomStyle } from '@/lib/brief/editor-zoom';
 import { loadPyodideOnce, runPython } from '@/lib/brief/pyodide';
 import type { ConceptStep, MiniLesson, TypeStep } from '@/lib/brief/concepts';
+
+import { EditorZoomControls } from './EditorZoomControls';
 
 interface Props {
   mini: MiniLesson;
@@ -155,11 +158,31 @@ function TypeView({
     setRun({ phase: 'fail', got, error: null });
   }, [source, step.expected]);
 
+  const { scale, zoomIn, zoomOut, reset: zoomReset } = useEditorZoom();
+  const editorStyle = zoomStyle(scale);
+  const codeTargetStyle = zoomStyle(scale);
+
   const onKeyDown = useCallback(
     (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
-      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      const mod = event.ctrlKey || event.metaKey;
+      if (mod && event.key === 'Enter') {
         event.preventDefault();
         void onRun();
+        return;
+      }
+      if (mod && (event.key === '=' || event.key === '+')) {
+        event.preventDefault();
+        zoomIn();
+        return;
+      }
+      if (mod && event.key === '-') {
+        event.preventDefault();
+        zoomOut();
+        return;
+      }
+      if (mod && event.key === '0') {
+        event.preventDefault();
+        zoomReset();
         return;
       }
       const el = event.currentTarget;
@@ -179,7 +202,7 @@ function TypeView({
         });
       }
     },
-    [onRun, source],
+    [onRun, source, zoomIn, zoomOut, zoomReset],
   );
 
   return (
@@ -193,19 +216,25 @@ function TypeView({
           </p>
           <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">python</p>
         </div>
-        <pre className="overflow-x-auto px-4 py-4 font-mono text-sm leading-relaxed text-ink select-all">
+        <pre
+          style={codeTargetStyle}
+          className="overflow-x-auto px-4 py-4 font-mono text-ink select-all"
+        >
           {step.code}
         </pre>
       </div>
 
       <div className="mt-4 overflow-hidden rounded-xl border border-line bg-surface">
-        <div className="flex items-center justify-between border-b border-line px-4 py-2">
+        <div className="flex items-center justify-between gap-3 border-b border-line px-4 py-2">
           <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
             Your editor
           </p>
-          <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
-            ⌘/Ctrl + Enter to run
-          </p>
+          <div className="flex items-center gap-3">
+            <EditorZoomControls />
+            <p className="font-mono text-[10px] tracking-[0.14em] text-subtle uppercase">
+              ⌘/Ctrl + Enter to run
+            </p>
+          </div>
         </div>
         <textarea
           ref={editorRef}
@@ -217,7 +246,8 @@ function TypeView({
           onKeyDown={onKeyDown}
           rows={3}
           spellCheck={false}
-          className="w-full resize-none bg-transparent px-4 py-3 font-mono text-sm leading-relaxed text-ink outline-none placeholder:text-subtle"
+          style={editorStyle}
+          className="w-full resize-none bg-transparent px-4 py-3 font-mono text-ink outline-none placeholder:text-subtle"
           placeholder={pyReady ? 'Type it here…' : 'Warming Python…'}
         />
       </div>
