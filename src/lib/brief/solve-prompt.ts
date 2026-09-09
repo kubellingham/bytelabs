@@ -25,7 +25,19 @@ Output strict JSON with this shape and nothing else:
   "beats": [
     {
       "find": "<a verbatim substring of the solution that this beat is about — one contiguous chunk that will be highlighted while the rest of the code dims>",
-      "note": "<one or two short sentences, conversational, explaining what the highlighted chunk is doing and why it is there>",
+      "intro": "<PLAIN-ENGLISH framing, no code, no jargon. Two short sentences. Sets up what this chunk is about BEFORE any code is shown. Example: 'We start by creating a dictionary where each student's name maps to their marks. This is our raw data.'>",
+      "note": "<ONE short sentence pointing at the specific mechanic of the highlighted chunk. Example: 'Curly braces {} mark a dictionary; each entry is key: value.'>",
+      "why": {
+        "question": "<a WHY question tying THIS chunk to a decision made in the solution. Not what does the syntax do — why THIS chunk vs an alternative. Example: 'Why a dictionary and not a list of tuples?'>",
+        "options": ["<3-4 short, plausible options>"],
+        "answer": 0,
+        "feedback": "<one short sentence naming why the correct answer is correct>"
+      },
+      "sayItBack": {
+        "question": "<a short 'in your own words' prompt about the same chunk. Example: 'In your own words, what does this dictionary store?'>",
+        "mustMention": ["<1-2 essential keywords a real answer would naturally include>"],
+        "hint": "<optional one-line nudge shown on a miss>"
+      },
       "occurrence": 1
     }
   ],
@@ -64,12 +76,29 @@ Rules for the SOLUTION:
 - No comments in the solution itself. The commentary lives in the beats, not in the code.
 
 Rules for the BEATS:
+
+A beat is not one paragraph — it is a FIVE-STEP mini-lesson about ONE chunk of the solution. Every beat you emit MUST carry the fields to drive all five steps: intro (words only), note (one-line pointer at the mechanic while the chunk is highlighted), find (the chunk itself for the type-it step), why (an MCQ tying the chunk to a decision), sayItBack (a freeform recall prompt). Do not skip why or sayItBack — the learner is meant to work each chunk five ways before moving on.
+
 - Each beat's "find" MUST appear verbatim in the solution. If your beat is about a whole line, "find" is that whole line's text. If it is about a fragment (e.g. "n % i == 0"), "find" is that exact fragment.
-- Cover the whole solution in order, top to bottom. A learner reading only the beat notes should understand the whole file.
-- 4 to 8 beats is the sweet spot. Fewer feels rushed; more feels laboured. If a solution is very short, 3 beats is fine.
-- Each note is 1–2 short sentences. No lists. No headings.
-- The FIRST beat introduces what the whole solution is doing at a glance. The LAST beat closes with what the output looks like or how we know it worked.
-- Ideal beat notes talk to the learner ("we read the number here", "notice we stop the moment we find one factor") rather than describing the code passively.
+- Prefer short "find" chunks (one clause, one expression, one line) — the learner types "find" from memory in step 3, so a 6-line chunk is punishing.
+- Cover the whole solution in order, top to bottom. A learner reading only the intros of every beat should understand the whole file.
+- 4 to 7 beats. Because each beat is now five steps, more beats become laboured — err on the shorter side.
+- The FIRST beat's intro introduces what the whole solution is doing at a glance. The LAST beat's intro closes with what the output tells us and how we know it worked.
+
+Field-by-field guidance:
+
+intro:
+  Two short sentences. NO CODE. NO SYNTAX WORDS. The learner has not seen the chunk yet at this point — set up the idea in plain English. "We now sort the students by their marks, biggest first. This lets us take the top three by just reading the first three entries."
+
+note:
+  ONE sentence. Points at the actual mechanic of the highlighted chunk. Free to use code words here (the chunk is visible). "sorted() with key=lambda x: x[1] sorts by the second item of each tuple — the marks — and reverse=True flips it to biggest-first."
+
+why (MCQ):
+  Ask WHY THIS CHUNK vs a plausible alternative. Not "what does sorted() do" (that is syntax recall) — "why key=lambda x: x[1] and not key=lambda x: x[0]?" (that is decision recall). Good why-questions read AS IF the learner had asked "why couldn't we have done it another way?". Wrong options are the tempting other choices, not throwaways.
+
+sayItBack (freeform):
+  A short "in your own words" prompt about the same chunk. mustMention is 1-2 short case-insensitive substrings the answer would naturally contain (a keyword the concept turns on: "sort", "biggest", "dictionary", "break"). Do not require full sentences.
+
 - Set "occurrence" to 2, 3, … only when the same substring genuinely appears multiple times and you mean the later one. Otherwise leave it as 1 (or omit it).
 
 Rules for the BLANKS:

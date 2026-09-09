@@ -5,6 +5,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { hasNthOccurrence } from '@/lib/brief/solve';
 import type { SolveBeat, SolveResponse } from '@/lib/brief/solve-types';
 
+import { BeatMiniLesson } from './BeatMiniLesson';
 import { SolveRewrite } from './SolveRewrite';
 import { SolveViva } from './SolveViva';
 
@@ -126,7 +127,8 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
               {phase.kind === 'see' ? (
                 <SeePanel taskTitle={taskTitle} totalBeats={totalBeats} onStart={advance} />
               ) : (
-                <BeatPanel
+                <BeatMiniLesson
+                  key={currentIndex}
                   index={currentIndex}
                   totalBeats={totalBeats}
                   beat={highlight!}
@@ -178,64 +180,6 @@ function SeePanel({
         className="mt-8 rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
       >
         Break it down ({totalBeats} steps) →
-      </button>
-    </>
-  );
-}
-
-function BeatPanel({
-  index,
-  totalBeats,
-  beat,
-  isLast,
-  isLastLeadsToRewrite,
-  onBack,
-  onAdvance,
-}: {
-  index: number;
-  totalBeats: number;
-  beat: SolveBeat;
-  isLast: boolean;
-  isLastLeadsToRewrite: boolean;
-  onBack: () => void;
-  onAdvance: () => void;
-}) {
-  return (
-    <>
-      <div className="flex items-center justify-between">
-        <p className="font-mono text-[11px] tracking-[0.18em] text-subtle uppercase">
-          Beat {index + 1} of {totalBeats}
-        </p>
-        <button
-          type="button"
-          onClick={onBack}
-          className="text-sm text-muted hover:text-ink"
-        >
-          ← Back to overview
-        </button>
-      </div>
-
-      <p className="mt-6 text-lg leading-relaxed text-ink">{beat.note}</p>
-
-      <div className="mt-4 overflow-hidden rounded-lg border border-line bg-code">
-        <div className="border-b border-line px-4 py-2">
-          <p className="font-mono text-[11px] tracking-[0.14em] text-subtle uppercase">
-            Highlighted
-          </p>
-        </div>
-        <pre className="overflow-x-auto px-4 py-3 font-mono text-sm text-ink">{beat.find}</pre>
-      </div>
-
-      <button
-        type="button"
-        onClick={onAdvance}
-        className="mt-8 rounded-lg bg-accent px-6 py-3 text-base font-medium text-on-accent transition-colors hover:bg-accent-hover"
-      >
-        {isLast
-          ? isLastLeadsToRewrite
-            ? 'Try it yourself →'
-            : 'Close walkthrough →'
-          : 'Continue →'}
       </button>
     </>
   );

@@ -14,23 +14,64 @@ import { z } from 'zod';
  *   - viva:    Array<{ kind: 'mcq' | 'freeform'; ... }> — for VIVA
  */
 
+/**
+ * "Why this piece?" — a short MCQ inside a beat that ties the chunk to
+ * the task's actual decision (why a dict vs a list, why sorted with
+ * reverse=True, why break early). Sharpens understanding beyond syntax.
+ */
+export const beatWhySchema = z.object({
+  question: z.string().min(1).max(280),
+  options: z.array(z.string().min(1).max(160)).min(2).max(4),
+  answer: z.number().int().nonnegative(),
+  feedback: z.string().min(1).max(280),
+});
+export type BeatWhy = z.infer<typeof beatWhySchema>;
+
+/**
+ * "Say it back" — a freeform recall prompt at the end of a beat.
+ * The learner explains the chunk in their own words; a couple of
+ * required keywords check that the essential idea is present.
+ */
+export const beatSayItBackSchema = z.object({
+  question: z.string().min(1).max(280),
+  mustMention: z.array(z.string().min(1).max(40)).min(1).max(4),
+  hint: z.string().min(1).max(280).optional(),
+});
+export type BeatSayItBack = z.infer<typeof beatSayItBackSchema>;
+
 export const solveBeatSchema = z.object({
   /**
-   * The exact substring of the solution that this beat is talking about.
-   * Matched verbatim in the walkthrough — beats whose `find` is not present
-   * in the solution are dropped, because a highlight that lights up nothing
-   * confuses more than it teaches.
+   * The exact substring of the solution that this beat is about.
+   * Matched verbatim in the walkthrough — beats whose `find` is not
+   * present in the solution are dropped.
    */
   find: z.string().min(1),
   /**
-   * Conversational explanation, one short paragraph. This is the tone: not
-   * a lecture, not a docstring — a lab TA talking through what the code is
-   * doing right now.
+   * The "See" note: one sentence pointing at the mechanic while the
+   * chunk is highlighted. Used in step 2 of the beat.
    */
   note: z.string().min(1),
   /**
-   * When the same substring appears multiple times in the solution, which
-   * occurrence to light up. 1-based; defaults to the first.
+   * The "Frame" — plain-English intro that sets up the chunk before
+   * any code is shown. Two short sentences, no jargon, no code. Step 1
+   * of the beat. Optional so old cached responses still render, but
+   * the prompt requires it.
+   */
+  intro: z.string().min(1).max(400).optional(),
+  /**
+   * "Why this piece?" — the MCQ that ties the chunk to a real task
+   * decision. Step 4 of the beat. Optional to allow graceful fallback
+   * when the AI cannot craft a sharp question for a trivial beat.
+   */
+  why: beatWhySchema.optional(),
+  /**
+   * "Say it back" — freeform recall prompt. Step 5 of the beat.
+   * Optional; skipped when absent.
+   */
+  sayItBack: beatSayItBackSchema.optional(),
+  /**
+   * When the same substring appears multiple times in the solution,
+   * which occurrence to light up. 1-based; defaults to the first.
    */
   occurrence: z.number().int().positive().default(1),
 });

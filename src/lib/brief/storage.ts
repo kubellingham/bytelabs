@@ -181,10 +181,21 @@ export function dismissOnRamp(sessionId: string, taskId: string): void {
  * the life of the session — re-opening the walkthrough is instant and
  * credit-free.
  */
+// Bump this whenever the solve response shape changes in a way that
+// makes older cached responses render worse (missing new required
+// context, wrong step count, etc.). Cached solves under an older
+// version key are ignored on read — the next open re-fetches a
+// fresh walkthrough that carries the new fields.
+const SOLVE_CACHE_VERSION = 'v2';
+
+function solveKey(sessionId: string, taskId: string): string {
+  return `${KEY_PREFIX}${sessionId}.solve.${SOLVE_CACHE_VERSION}.${taskId}`;
+}
+
 export function loadSolve(sessionId: string, taskId: string): unknown {
   if (typeof window === 'undefined') return null;
   try {
-    const raw = window.localStorage.getItem(`${KEY_PREFIX}${sessionId}.solve.${taskId}`);
+    const raw = window.localStorage.getItem(solveKey(sessionId, taskId));
     if (!raw) return null;
     return JSON.parse(raw);
   } catch {
@@ -195,10 +206,7 @@ export function loadSolve(sessionId: string, taskId: string): unknown {
 export function saveSolve(sessionId: string, taskId: string, response: unknown): void {
   if (typeof window === 'undefined') return;
   try {
-    window.localStorage.setItem(
-      `${KEY_PREFIX}${sessionId}.solve.${taskId}`,
-      JSON.stringify(response),
-    );
+    window.localStorage.setItem(solveKey(sessionId, taskId), JSON.stringify(response));
   } catch {
     /* ignore */
   }

@@ -578,6 +578,50 @@ describe('solveResponseSchema', () => {
     }
   });
 
+  it('carries beat intro/why/sayItBack through when the AI provides them', () => {
+    const parsed = solveResponseSchema.safeParse({
+      solution: 'x = 1',
+      beats: [
+        {
+          find: 'x = 1',
+          intro: 'We start by giving x a value.',
+          note: 'x is a variable that stores 1.',
+          why: {
+            question: 'Why 1 and not 0?',
+            options: ['We want to start counting from one.', 'Zero is not allowed.'],
+            answer: 0,
+            feedback: 'Counting from one matches how people naturally read.',
+          },
+          sayItBack: {
+            question: 'In your own words, what did we just do?',
+            mustMention: ['variable'],
+          },
+        },
+      ],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      const beat = parsed.data.beats[0];
+      expect(beat?.intro).toContain('start by giving');
+      expect(beat?.why?.options).toHaveLength(2);
+      expect(beat?.sayItBack?.mustMention).toEqual(['variable']);
+    }
+  });
+
+  it('accepts a beat that omits intro/why/sayItBack (graceful fallback)', () => {
+    const parsed = solveResponseSchema.safeParse({
+      solution: 'x = 1',
+      beats: [{ find: 'x = 1', note: 'x stores 1.' }],
+    });
+    expect(parsed.success).toBe(true);
+    if (parsed.success) {
+      const beat = parsed.data.beats[0];
+      expect(beat?.intro).toBeUndefined();
+      expect(beat?.why).toBeUndefined();
+      expect(beat?.sayItBack).toBeUndefined();
+    }
+  });
+
   it('leaves expectedInput undefined when the AI omits it', () => {
     const parsed = solveResponseSchema.safeParse({
       solution: 'print("hi")',
