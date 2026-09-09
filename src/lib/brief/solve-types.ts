@@ -69,6 +69,47 @@ export const acceptancePatternSchema = z.object({
 });
 export type AcceptancePattern = z.infer<typeof acceptancePatternSchema>;
 
+/**
+ * VIVA — the "defend it" round after REWRITE.
+ *
+ * Two shapes:
+ *  - MCQ: a specific question with 3-4 short options and one correct
+ *    answer. Fast to check, sharp for calibrating "did they understand".
+ *  - FREEFORM: an open-ended "why" question. The learner types a short
+ *    explanation; the grader checks that a few key words are present
+ *    (case-insensitive substring). Not scored strictly — the point is to
+ *    make the learner *say* the reason out loud.
+ */
+export const vivaMcqSchema = z.object({
+  kind: z.literal('mcq'),
+  question: z.string().min(1).max(280),
+  options: z.array(z.string().min(1).max(160)).min(2).max(4),
+  answer: z.number().int().nonnegative(),
+  /** One-sentence explanation shown after the learner picks. */
+  feedback: z.string().min(1).max(280),
+});
+export type VivaMcq = z.infer<typeof vivaMcqSchema>;
+
+export const vivaFreeformSchema = z.object({
+  kind: z.literal('freeform'),
+  question: z.string().min(1).max(280),
+  /**
+   * Short case-insensitive substrings that MUST appear in the learner's
+   * answer for the question to count as answered. Aim for 1-3 substrings
+   * per question — the essential words the learner has to have said.
+   */
+  mustMention: z.array(z.string().min(1).max(40)).min(1).max(4),
+  /** Optional nudge shown when the learner's first attempt misses. */
+  hint: z.string().min(1).max(280).optional(),
+});
+export type VivaFreeform = z.infer<typeof vivaFreeformSchema>;
+
+export const vivaQuestionSchema = z.discriminatedUnion('kind', [
+  vivaMcqSchema,
+  vivaFreeformSchema,
+]);
+export type VivaQuestion = z.infer<typeof vivaQuestionSchema>;
+
 export const solveResponseSchema = z.object({
   solution: z.string().min(1),
   beats: z.array(solveBeatSchema).min(1),
@@ -86,6 +127,12 @@ export const solveResponseSchema = z.object({
    * verbatim. See AcceptancePattern for the rules.
    */
   acceptancePattern: acceptancePatternSchema.optional(),
+  /**
+   * The VIVA — a mixed handful of MCQ + freeform questions the learner
+   * answers after the rewrite passes. Empty or absent means we skip the
+   * viva phase entirely.
+   */
+  viva: z.array(vivaQuestionSchema).default([]),
 });
 export type SolveResponse = z.infer<typeof solveResponseSchema>;
 export type SolveResponseInput = z.input<typeof solveResponseSchema>;

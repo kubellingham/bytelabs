@@ -7,6 +7,7 @@ import { evaluatePassing } from '@/lib/brief/grading';
 import { formatPythonError } from '@/lib/brief/python-errors';
 import {
   filterValidBlanks,
+  filterValidViva,
   hasNthOccurrence,
   makeGhostForRound,
   makeRewriteTemplate,
@@ -234,6 +235,46 @@ describe('solve — makeRewriteTemplate', () => {
 
   it('returns the source verbatim when there are no blanks', () => {
     expect(makeRewriteTemplate('print("hi")', [])).toBe('print("hi")');
+  });
+});
+
+describe('solve — filterValidViva', () => {
+  const goodMcq = {
+    kind: 'mcq',
+    question: 'Why does the loop start at 2?',
+    options: ['a', 'b', 'c'],
+    answer: 1,
+    feedback: 'Because 1 divides every number.',
+  };
+  const goodFreeform = {
+    kind: 'freeform',
+    question: 'Why break early?',
+    mustMention: ['factor'],
+    hint: 'Think about the loop.',
+  };
+
+  it('keeps well-shaped MCQ and freeform questions', () => {
+    expect(filterValidViva([goodMcq, goodFreeform])).toHaveLength(2);
+  });
+
+  it('drops MCQ whose answer index is out of range', () => {
+    const bad = { ...goodMcq, answer: 99 };
+    expect(filterValidViva([goodMcq, bad])).toHaveLength(1);
+  });
+
+  it('drops MCQ with a negative answer index', () => {
+    const bad = { ...goodMcq, answer: -1 };
+    expect(filterValidViva([bad])).toEqual([]);
+  });
+
+  it('drops entries that fail schema validation entirely', () => {
+    expect(filterValidViva([{ kind: 'poll', question: 'x' }, goodMcq])).toHaveLength(1);
+    expect(filterValidViva([{ kind: 'freeform', question: '' }, goodFreeform])).toHaveLength(1);
+  });
+
+  it('caps at 6 kept questions', () => {
+    const many = Array.from({ length: 10 }, () => goodMcq);
+    expect(filterValidViva(many)).toHaveLength(6);
   });
 });
 

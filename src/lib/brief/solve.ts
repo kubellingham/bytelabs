@@ -2,7 +2,13 @@ import { complete } from '@/lib/ai/complete';
 import { resolveModel, resolveProvider } from '@/lib/ai/provider';
 
 import { BRIEF_SOLVE_SYSTEM, briefSolveUser } from './solve-prompt';
-import { solveBeatSchema, type SolveBeat, type SolveResponse } from './solve-types';
+import {
+  solveBeatSchema,
+  vivaQuestionSchema,
+  type SolveBeat,
+  type SolveResponse,
+  type VivaQuestion,
+} from './solve-types';
 import type { BriefTask } from './types';
 import { extractJson } from './verdict';
 
@@ -85,15 +91,37 @@ export async function solveTask(task: BriefTask): Promise<SolveResult> {
   const expectedOutput =
     typeof json.expectedOutput === 'string' ? json.expectedOutput : undefined;
 
+  const viva = filterValidViva(Array.isArray(json.viva) ? json.viva : []);
+
   return {
     ok: true,
     data: {
       solution,
       beats,
       blanks,
+      viva,
       ...(expectedOutput !== undefined ? { expectedOutput } : {}),
     },
   };
+}
+
+/**
+ * Keep only viva questions that pass the schema AND — for MCQ — whose
+ * `answer` index points at a real option. Cap at 6 questions so a
+ * runaway model can't drown the learner.
+ */
+export function filterValidViva(candidates: readonly unknown[]): VivaQuestion[] {
+  const kept: VivaQuestion[] = [];
+  for (const candidate of candidates) {
+    const parsed = vivaQuestionSchema.safeParse(candidate);
+    if (!parsed.success) continue;
+    if (parsed.data.kind === 'mcq') {
+      if (parsed.data.answer < 0 || parsed.data.answer >= parsed.data.options.length) continue;
+    }
+    kept.push(parsed.data);
+    if (kept.length >= 6) break;
+  }
+  return kept;
 }
 
 /**

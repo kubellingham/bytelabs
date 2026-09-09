@@ -37,7 +37,22 @@ Output strict JSON with this shape and nothing else:
   "acceptancePattern": {
     "mustContain": ["<substring>", "..."],
     "mustNotContain": ["<substring>", "..."]
-  }
+  },
+  "viva": [
+    {
+      "kind": "mcq",
+      "question": "<a specific question about a choice made in the solution>",
+      "options": ["<option 1>", "<option 2>", "<option 3>", "<option 4>"],
+      "answer": 0,
+      "feedback": "<one short sentence explaining why the correct answer is correct>"
+    },
+    {
+      "kind": "freeform",
+      "question": "<a short 'why' question about a decision or line in the solution>",
+      "mustMention": ["<keyword>", "..."],
+      "hint": "<optional one-line nudge shown after a miss>"
+    }
+  ]
 }
 
 Rules for the SOLUTION:
@@ -89,6 +104,42 @@ Worked example for input 8 (not prime):
   → rejects "8 is prime"
 
 Omit acceptancePattern entirely when the task's essence really is the exact wording (e.g. "print exactly '*' * n on one line") — strict grading is the honest answer there.
+
+Rules for the VIVA:
+- 3-5 questions in total. Mix: 1-2 MCQ and 1-2 freeform. Small enough to feel like a quick check, big enough to catch real understanding.
+- Ask WHY, not WHAT. A good viva question reveals whether the learner understood a DECISION the solution made — "why break early?", "why start range from 2?", "what happens if we remove the is_prime = False line inside the if?". A bad one asks the learner to recite a fact ("what does % do?", "what is a for loop?"). If the question could be answered by someone who did not read this solution, rewrite it.
+- MCQ rules:
+    * 3 or 4 short options, exactly one correct.
+    * "answer" is the ZERO-BASED INDEX of the correct option.
+    * "feedback" is ONE short sentence about why the correct answer is correct — not a lecture. It reads AFTER the learner picks.
+    * Wrong options should be plausible (a student who half-understood might pick them) — never joke options, never obvious throwaways.
+- FREEFORM rules:
+    * Question is a short, direct "why" prompt.
+    * "mustMention" is 1-3 short case-insensitive substrings the answer MUST contain to count as answered. Pick the essential words a real answer would naturally include (e.g. for "why break?" mustMention might be ["factor"] or ["stop"] — the word that carries the reason). Do not require full sentences.
+    * Optional "hint" is a one-liner shown only if the learner's first attempt misses — it should nudge, not answer.
+- Order: start with a warmup question, end with the sharpest one.
+- Skip the viva entirely (omit or empty array) only when the task is so mechanical that no "why" is worth asking (e.g. "print your name" — there is nothing to defend).
+
+Worked example (prime-check task):
+  viva: [
+    {
+      "kind": "mcq",
+      "question": "Why does the loop start at 2, not 1?",
+      "options": [
+        "Because 1 divides every number, so it would always look like a factor.",
+        "Because Python's range() cannot start at 1.",
+        "Because 2 is the smallest number worth checking as a divisor."
+      ],
+      "answer": 0,
+      "feedback": "Right — 1 divides everything, so including it would make every number look non-prime."
+    },
+    {
+      "kind": "freeform",
+      "question": "Why do we call break the moment we find a factor?",
+      "mustMention": ["factor"],
+      "hint": "Think about what else we would learn by continuing the loop."
+    }
+  ]
 
 Return the JSON object only. No prose outside the JSON. No code fences.`;
 

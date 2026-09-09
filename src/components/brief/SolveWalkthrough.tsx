@@ -6,6 +6,7 @@ import { hasNthOccurrence } from '@/lib/brief/solve';
 import type { SolveBeat, SolveResponse } from '@/lib/brief/solve-types';
 
 import { SolveRewrite } from './SolveRewrite';
+import { SolveViva } from './SolveViva';
 
 interface Props {
   taskTitle: string;
@@ -16,7 +17,8 @@ interface Props {
 type Phase =
   | { kind: 'see' }
   | { kind: 'beat'; index: number }
-  | { kind: 'rewrite' };
+  | { kind: 'rewrite' }
+  | { kind: 'viva' };
 
 /**
  * The SEE + BREAKDOWN walkthrough.
@@ -41,6 +43,7 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
   // AND an expected output to grade against. Otherwise the last beat just
   // closes the walkthrough (as before).
   const canRewrite = solve.blanks.length > 0 && !!solve.expectedOutput?.trim();
+  const canViva = solve.viva.length > 0;
 
   const advance = useCallback(() => {
     if (phase.kind === 'see') {
@@ -51,6 +54,8 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
       if (isLastBeat) {
         if (canRewrite) {
           setPhase({ kind: 'rewrite' });
+        } else if (canViva) {
+          setPhase({ kind: 'viva' });
         } else {
           onClose();
         }
@@ -59,16 +64,26 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
       setPhase({ kind: 'beat', index: phase.index + 1 });
       return;
     }
-    // In the rewrite phase, advance = done.
+    if (phase.kind === 'rewrite') {
+      if (canViva) {
+        setPhase({ kind: 'viva' });
+      } else {
+        onClose();
+      }
+      return;
+    }
+    // In the viva phase, advance = done.
     onClose();
-  }, [phase, isLastBeat, canRewrite, onClose]);
+  }, [phase, isLastBeat, canRewrite, canViva, onClose]);
 
   const phaseLabel =
     phase.kind === 'see'
       ? 'Read the solution'
       : phase.kind === 'beat'
         ? `Beat ${currentIndex + 1} of ${totalBeats}`
-        : 'Now you type it';
+        : phase.kind === 'rewrite'
+          ? 'Now you type it'
+          : 'Viva — defend the solution';
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-bg/95 backdrop-blur">
@@ -96,9 +111,13 @@ export function SolveWalkthrough({ taskTitle, solve, onClose }: Props) {
         <div className="min-h-0 flex-1 overflow-y-auto">
           <SolveRewrite
             solve={solve}
-            onDone={onClose}
+            onDone={advance}
             onBack={() => setPhase({ kind: 'beat', index: totalBeats - 1 })}
           />
+        </div>
+      ) : phase.kind === 'viva' ? (
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <SolveViva questions={solve.viva} onDone={onClose} />
         </div>
       ) : (
         <div className="flex min-h-0 flex-1">
