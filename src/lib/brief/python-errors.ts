@@ -72,13 +72,16 @@ export function formatPythonError(raw: string): string {
   const cleaned = compacted.join('\n').trim();
 
   // Pyodide raises `OSError: [Errno 29] I/O error` the first time `input()`
-  // fires without a stdin source. That message is opaque to a beginner —
-  // they read "I/O error" and think their code is broken. Swap it for a
-  // plain-English hint that points at the actual cause (browser sandbox
-  // has no keyboard) and the actual fix (provide a value up front).
-  if (/OSError:\s*\[Errno 29\]\s*I\/O error/.test(cleaned)) {
+  // fires without a stdin source. `EOFError: EOF when reading a line` is
+  // the same story once a stdin handler IS set but has no more lines to
+  // give. Both are opaque to a beginner — they read the words and think
+  // their code is broken. Swap for a plain-English hint that points at
+  // the actual cause (browser sandbox has no keyboard) and the fix
+  // (the walkthrough feeds a value; without one, input() can't run).
+  const INPUT_STARVED = /(?:OSError:\s*\[Errno 29\]\s*I\/O error|EOFError:\s*EOF when reading a line)/;
+  if (INPUT_STARVED.test(cleaned)) {
     return cleaned.replace(
-      /OSError:\s*\[Errno 29\]\s*I\/O error/,
+      INPUT_STARVED,
       "input() had no value to read — this browser sandbox has no keyboard. The walkthrough feeds a value in for you; a task room without a preset input can't call input().",
     );
   }

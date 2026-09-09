@@ -478,6 +478,16 @@ OSError: [Errno 29] I/O error`;
     expect(formatted).toContain('input()');
     expect(formatted).toContain('no keyboard');
   });
+
+  it('translates EOFError from a drained stdin into the same hint', () => {
+    const raw = `Traceback (most recent call last):
+  File "<exec>", line 1, in <module>
+EOFError: EOF when reading a line`;
+    const formatted = formatPythonError(raw);
+    expect(formatted).not.toContain('EOFError');
+    expect(formatted).toContain('input()');
+    expect(formatted).toContain('no keyboard');
+  });
 });
 
 describe('editor-keys — applyCodeEditorKey', () => {

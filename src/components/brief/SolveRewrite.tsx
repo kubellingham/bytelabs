@@ -66,7 +66,17 @@ export function SolveRewrite({ solve, onDone, onBack }: Props) {
 
   const onRun = useCallback(async () => {
     setRun({ phase: 'running' });
-    const result = await runPython(source, { stdin: stdinLines(solve.expectedInput) });
+    const result = await runPython(source, {
+      stdin: stdinLines(solve.expectedInput),
+      // When the AI's cached solve pre-dates expectedInput (or asks for
+      // more lines than were seeded), pop a prompt so the learner can
+      // hand-feed one value instead of hitting EOFError.
+      promptFallback: () => {
+        if (typeof window === 'undefined') return null;
+        const value = window.prompt('Your program is asking for input:');
+        return value;
+      },
+    });
     const got = result.stdout.trim();
     if (result.error) {
       setRun({ phase: 'fail', got, error: result.error });

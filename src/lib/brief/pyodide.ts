@@ -74,14 +74,20 @@ export type { PythonRunResult } from './verdict';
 export interface RunPythonOptions {
   /**
    * Values fed line-by-line into `input()` calls. Each `input()` in the
-   * program consumes one entry. Extra entries are ignored; when the
-   * program asks for more than we have, `input()` raises EOFError (a
-   * beginner-legible signal that the seed did not carry enough lines).
+   * program consumes one entry.
    *
-   * If omitted or empty, `input()` raises immediately — the room falls
-   * back to self-mark for tasks that read interactively.
+   * When the queue runs dry, the runtime falls back to `promptFallback`
+   * (if provided) so the learner can still enter a value — cached
+   * walkthroughs from before expectedInput existed still work this way,
+   * and interactive tasks can ask the browser for input directly.
    */
   stdin?: readonly string[];
+  /**
+   * Called when `input()` fires and no queued stdin lines remain. Return
+   * the value (as if the user typed it), or `null` to signal EOF.
+   * A common implementation is `() => window.prompt('Input:')`.
+   */
+  promptFallback?: () => string | null;
 }
 
 /**
@@ -103,8 +109,13 @@ export async function runPython(
   pyodide.setStderr({ batched: (text) => stderr.push(text) });
 
   const queue = (options.stdin ?? []).slice();
+  const fallback = options.promptFallback;
   pyodide.setStdin({
-    stdin: () => (queue.length === 0 ? null : queue.shift() ?? null),
+    stdin: () => {
+      if (queue.length > 0) return queue.shift() ?? null;
+      if (fallback) return fallback();
+      return null;
+    },
   });
 
   const started = performance.now();
