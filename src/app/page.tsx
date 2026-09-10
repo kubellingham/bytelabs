@@ -12,15 +12,16 @@ import { useUser } from '@/lib/auth/useUser';
  * A signed-out visitor sees the Landing (Google sign-in, feature
  * cards). A signed-in visitor is redirected straight into /brief —
  * we don't build a dashboard interstitial. The unconfigured case
- * (Firebase env vars missing, e.g. a self-hosted dev box) also lands
- * in /brief so nothing is broken by an incomplete deploy.
+ * (Firebase env vars missing) ALSO sees the Landing: the marketing
+ * is the front door for everyone, and the Google button already
+ * knows how to fall through to /brief when there's no auth backend.
  */
 export default function HomePage() {
   const authState = useUser();
   const router = useRouter();
 
   useEffect(() => {
-    if (authState.status === 'signed-in' || authState.status === 'unconfigured') {
+    if (authState.status === 'signed-in') {
       router.replace('/brief');
     }
   }, [authState.status, router]);
@@ -33,12 +34,12 @@ export default function HomePage() {
     );
   }
 
-  if (authState.status === 'signed-out') {
+  if (authState.status === 'signed-out' || authState.status === 'unconfigured') {
     return <Landing />;
   }
 
-  // signed-in and unconfigured branches fall through — the effect
-  // redirects; render a soft spinner while it does.
+  // signed-in falls through — the effect redirects; soft spinner
+  // while it does.
   return (
     <div className="flex min-h-dvh items-center justify-center bg-bg">
       <div className="h-6 w-6 animate-spin rounded-full border-2 border-muted border-t-transparent" />
