@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 import { BriefPasteForm } from '@/components/brief/BriefPasteForm';
 import { Page } from '@/components/shell/Page';
 
@@ -24,11 +22,8 @@ export default function BriefLandingPage() {
         <BriefPasteForm />
 
         <p className="mt-8 text-sm text-subtle">
-          The Course and{' '}
-          <Link href="/ground" className="underline decoration-line hover:text-ink">
-            The Ground
-          </Link>{' '}
-          are for material we authored. The Brief is for material you bring.
+          Courses and Grounds are on the way. For now, the Brief is where ByteLabs lives —
+          bring the material, and it becomes a runnable session.
         </p>
       </div>
     </Page>

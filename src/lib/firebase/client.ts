@@ -1,5 +1,5 @@
 import { initializeApp, getApps, getApp, type FirebaseApp } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, GoogleAuthProvider, signInWithPopup, type Auth } from 'firebase/auth';
 
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
@@ -25,4 +25,20 @@ export function auth(): Auth | null {
   if (!isFirebaseConfigured()) return null;
   if (!authInstance) authInstance = getAuth(getFirebaseApp());
   return authInstance;
+}
+
+/**
+ * Google sign-in via a popup. Returns null and quietly no-ops when
+ * Firebase is not configured (the app also supports an
+ * anonymous-fallback deployment); the caller can branch on the return.
+ * Popup-blocked or user-closed rejects with a friendly-error code —
+ * let it propagate so the caller shows the right message.
+ */
+export async function signInWithGoogle(): Promise<{ ok: boolean; reason?: string }> {
+  const firebaseAuth = auth();
+  if (!firebaseAuth) return { ok: false, reason: 'unconfigured' };
+  const provider = new GoogleAuthProvider();
+  provider.setCustomParameters({ prompt: 'select_account' });
+  await signInWithPopup(firebaseAuth, provider);
+  return { ok: true };
 }
