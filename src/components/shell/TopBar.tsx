@@ -18,6 +18,7 @@ import { SignOutButton } from '@/components/auth/AuthGate';
 const LINKS = [
   { href: '/course', label: 'The Course', match: ['/course', '/learn', '/graduate'] },
   { href: '/ground', label: 'The Ground', match: ['/ground'] },
+  { href: '/brief', label: 'The Brief', match: ['/brief'] },
   { href: '/warmup', label: 'Warm-up', match: ['/warmup'] },
   { href: '/progress', label: 'Progress', match: ['/progress'] },
 ] as const;
